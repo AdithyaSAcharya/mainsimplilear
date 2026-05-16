@@ -15,7 +15,7 @@ const {
         });
       }
   
-      const courseId = req.params.id;
+      const courseId = req.params.id || req.params.courseId;
   
       const course = await getCourseById(courseId);
   

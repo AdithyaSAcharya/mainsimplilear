@@ -1,0 +1,58 @@
+1.  **Define Schema for New Tables/Columns:**
+    *   **`courses` table:**
+        *   Add `lessons` column (JSON type or similar, to store an ordered array of lesson IDs from MongoDB).
+    *   **`enrollments` table:**
+        *   `id` (Primary Key, AUTO_INCREMENT)
+        *   `user_id` (Foreign Key to `users` table)
+        *   `course_id` (Foreign Key to `courses` table)
+        *   `enrollment_date` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+        *   `completion_status` (ENUM('in_progress', 'completed'), DEFAULT 'in_progress')
+    *   **`lesson_tracks` table:**
+        *   `id` (Primary Key, AUTO_INCREMENT)
+        *   `user_id` (Foreign Key to `users` table)
+        *   `lesson_id` (VARCHAR, to store MongoDB lesson ID)
+        *   `course_id` (Foreign Key to `courses` table)
+        *   `status` (ENUM('not_started', 'in_progress', 'completed'), DEFAULT 'not_started')
+        *   `completion_date` (DATETIME, NULLABLE)
+
+2.  **Implement Database Migrations (or direct schema updates):**
+    *   Add `lessons` column to `courses` table.
+    *   Create `enrollments` table.
+    *   Create `lesson_tracks` table.
+
+3.  **MongoDB Integration for Lessons:**
+    *   Verify/Set up MongoDB connection (`mongoConnection.js`).
+    *   Create a Mongoose/MongoDB model for `Lesson` with `title`, `description`, `content` (rich text).
+    *   Implement APIs to create, retrieve, update, delete lessons in MongoDB.
+
+4.  **Update `courseModel.js`:**
+    *   Modify `createCourse` to handle the new `lessons` column.
+    *   Modify `getCourseById` to fetch lesson details from MongoDB using the stored `lessons` array and `mongo_course_content_id`.
+
+5.  **Implement Enrollment Logic:**
+    *   Create `enrollmentModel.js` with functions for:
+        *   `enrollUserInCourse(userId, courseId)`
+        *   `getUserEnrollments(userId)`
+        *   `getCourseEnrollments(courseId)`
+        *   `updateEnrollmentStatus(enrollmentId, status)`
+
+6.  **Implement Lesson Tracking Logic:**
+    *   Create `lessonTrackModel.js` with functions for:
+        *   `createLessonTrack(userId, courseId, lessonId)`
+        *   `updateLessonStatus(userId, courseId, lessonId, status)`
+        *   `getUserLessonStatus(userId, courseId, lessonId)`
+        *   `getCourseProgress(userId, courseId)` (to determine course completion)
+
+7.  **Develop APIs:**
+    *   **Course APIs:**
+        *   API to add/remove lessons to a course (updates `lessons` array in `courses` table and potentially MongoDB).
+        *   API to get course details with embedded lesson information.
+    *   **Enrollment APIs:**
+        *   API for users to enroll in a course.
+        *   API to get a user's enrolled courses.
+    *   **Lesson Tracking APIs:**
+        *   API for users to mark a lesson as completed.
+        *   API to get a user's progress in a course.
+
+8.  **Frontend Integration (Placeholder):**
+    *   Update UI to display lessons, allow enrollment, and track progress.

@@ -17,6 +17,8 @@ const {
   getCourseByIdController,
   updateCourseController,
   deleteCourseController,
+  addLessonToCourseController,
+  removeLessonFromCourseController,
 } = require(
   "../controllers/courseController"
 );
@@ -181,6 +183,90 @@ router.delete(
   authMiddleware,
   instructorCourseMiddleware,
   deleteCourseController
+);
+
+/**
+ * @swagger
+ * /api/courses/{courseId}/lessons:
+ *   post:
+ *     summary: Add a lesson to a course
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - lessonId
+ *             properties:
+ *               lessonId:
+ *                 type: string
+ *                 example: 60d5ec49f8c7a1001c8e4d5a
+ *     responses:
+ *       200:
+ *         description: Lesson added to course
+ *       400:
+ *         description: Lesson ID is required
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  "/:courseId/lessons",
+  authMiddleware,
+  instructorCourseMiddleware,
+  addLessonToCourseController
+);
+
+/**
+ * @swagger
+ * /api/courses/{courseId}/lessons:
+ *   delete:
+ *     summary: Remove a lesson from a course
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - lessonId
+ *             properties:
+ *               lessonId:
+ *                 type: string
+ *                 example: 60d5ec49f8c7a1001c8e4d5a
+ *     responses:
+ *       200:
+ *         description: Lesson removed from course
+ *       400:
+ *         description: Lesson ID is required
+ *       500:
+ *         description: Server error
+ */
+router.delete(
+  "/:courseId/lessons",
+  authMiddleware,
+  instructorCourseMiddleware,
+  removeLessonFromCourseController
 );
 
 module.exports = router;

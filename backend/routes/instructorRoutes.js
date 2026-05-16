@@ -12,6 +12,7 @@ const adminMiddleware = require(
 
 const {
   createInstructor,
+  getInstructorCoursesController,
 } = require(
   "../controllers/instructorController"
 );
@@ -68,6 +69,28 @@ router.post(
   authMiddleware,
   adminMiddleware,
   createInstructor
+);
+
+/**
+ * @swagger
+ * /api/instructors/courses:
+ *   get:
+ *     summary: Get all courses created by the authenticated instructor
+ *     tags: [Instructors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of instructor's courses
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get(
+  "/courses",
+  authMiddleware,
+  getInstructorCoursesController
 );
 
 module.exports = router;

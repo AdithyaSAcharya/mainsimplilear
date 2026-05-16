@@ -4,6 +4,8 @@ const {
     getCourseById,
     updateCourse,
     deleteCourse,
+    addLessonToCourse,
+    removeLessonFromCourse,
   } = require("../models/courseModel");
   
   const createCourseController = async (
@@ -18,17 +20,18 @@ const {
         mongoCourseContentId,
       } = req.body;
   
-      await createCourse(
+      const result = await createCourse(
         title,
         shortDescription,
-        thumbnail,
+        thumbnail || null,
         req.user.id,
-        mongoCourseContentId
+        mongoCourseContentId || null
       );
   
       return res.status(201).json({
         success: true,
         message: "Course created",
+        courseId: result.insertId
       });
     } catch (error) {
       console.log(error);
@@ -89,12 +92,14 @@ const {
           title,
           shortDescription,
           thumbnail,
+          is_published
         } = req.body;
-  
+        
         await updateCourse(
           title,
           shortDescription,
           thumbnail,
+          is_published,
           req.params.id
         );
   
@@ -130,6 +135,42 @@ const {
         });
       }
     };
+
+  const addLessonToCourseController = async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { lessonId } = req.body;
+
+      if (!lessonId) {
+        return res.status(400).json({ success: false, message: "Lesson ID is required." });
+      }
+
+      await addLessonToCourse(courseId, lessonId);
+
+      return res.status(200).json({ success: true, message: "Lesson added to course." });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ success: false, message: "Server error." });
+    }
+  };
+
+  const removeLessonFromCourseController = async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { lessonId } = req.body;
+
+      if (!lessonId) {
+        return res.status(400).json({ success: false, message: "Lesson ID is required." });
+      }
+
+      await removeLessonFromCourse(courseId, lessonId);
+
+      return res.status(200).json({ success: true, message: "Lesson removed from course." });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ success: false, message: "Server error." });
+    }
+  };
   
   module.exports = {
     createCourseController,
@@ -137,4 +178,6 @@ const {
     getCourseByIdController,
     updateCourseController,
     deleteCourseController,
+    addLessonToCourseController,
+    removeLessonFromCourseController,
   };

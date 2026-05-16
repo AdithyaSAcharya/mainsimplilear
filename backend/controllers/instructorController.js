@@ -1,9 +1,11 @@
-const bcrypt = require("bcryptjs");
-
 const {
   createUser,
   getUserByEmail,
 } = require("../models/userModel");
+
+const {
+  getInstructorCourses,
+} = require("../models/courseModel");
 
 const createInstructor = async (
   req,
@@ -50,6 +52,18 @@ const createInstructor = async (
   }
 };
 
+const getInstructorCoursesController = async (req, res) => {
+  try {
+    const instructorId = req.user.id;
+    const courses = await getInstructorCourses(instructorId);
+    return res.status(200).json({ success: true, courses });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 module.exports = {
   createInstructor,
+  getInstructorCoursesController,
 };

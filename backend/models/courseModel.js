@@ -1,4 +1,5 @@
 const { mysqlPool } = require("../congif/mySqlConnection");
+const Lesson = require('./lessonModel'); // Import the Lesson model
 
 const createCourse = async (
   title,
@@ -14,9 +15,10 @@ const createCourse = async (
       short_description,
       thumbnail,
       instructor_id,
-      mongo_course_content_id
+      mongo_course_content_id,
+      lessons
     )
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await mysqlPool.execute(query, [
@@ -25,6 +27,7 @@ const createCourse = async (
     thumbnail,
     instructorId,
     mongoCourseContentId,
+    JSON.stringify([]) // Initialize lessons as an empty JSON array
   ]);
 
   return result;
@@ -51,29 +54,62 @@ const getCourseById = async (courseId) => {
     courseId,
   ]);
 
-  return rows[0];
+  let course = rows[0];
+
+  if (course && course.lessons) {
+    try {
+      const lessonIds = typeof course.lessons === 'string' ? JSON.parse(course.lessons) : course.lessons;
+      if (lessonIds.length > 0) {
+        const lessons = await Promise.all(
+          lessonIds.map(async (lessonId) => {
+            try {
+              return await Lesson.findById(lessonId);
+            } catch (mongoError) {
+              console.error(`Error fetching lesson ${lessonId} from MongoDB:`, mongoError);
+              return null; // Return null for lessons that couldn't be fetched
+            }
+          })
+        );
+        course.lessons = lessons.filter(lesson => lesson !== null); // Filter out nulls
+      } else {
+        course.lessons = [];
+      }
+    } catch (parseError) {
+      console.error("Error parsing lessons JSON from course:", parseError);
+      course.lessons = []; // Default to empty array if parsing fails
+    }
+  } else if (course) {
+    course.lessons = []; // Ensure lessons array exists even if column is null/empty
+  }
+
+  return course;
 };
 
 const updateCourse = async (
   title,
   shortDescription,
   thumbnail,
+  is_published,
   courseId
 ) => {
+  
   const query = `
     UPDATE courses
     SET
       title = ?,
       short_description = ?,
-      thumbnail = ?
+      thumbnail = ?,
+      is_published = ?
     WHERE id = ?
   `;
+
 
   const [result] = await mysqlPool.execute(query, [
     title,
     shortDescription,
     thumbnail,
-    courseId,
+    is_published,
+    courseId
   ]);
 
   return result;
@@ -92,10 +128,60 @@ const deleteCourse = async (courseId) => {
   return result;
 };
 
+async function addLessonToCourse(courseId, lessonId) {
+  const [rows] = await mysqlPool.execute('SELECT lessons FROM courses WHERE id = ?', [courseId]);
+  let lessons = rows[0].lessons ? (typeof rows[0].lessons === 'string' ? JSON.parse(rows[0].lessons) : rows[0].lessons) : [];
+
+  if (!lessons.includes(lessonId)) {
+    lessons.push(lessonId);
+    const query = `
+      UPDATE courses
+      SET lessons = ?
+      WHERE id = ?
+    `;
+    await mysqlPool.execute(query, [JSON.stringify(lessons), courseId]);
+  }
+  return lessons;
+}
+
+async function removeLessonFromCourse(courseId, lessonId) {
+  const [rows] = await mysqlPool.execute('SELECT lessons FROM courses WHERE id = ?', [courseId]);
+  let lessons = rows[0].lessons ? (typeof rows[0].lessons === 'string' ? JSON.parse(rows[0].lessons) : rows[0].lessons) : [];
+
+  const initialLength = lessons.length;
+  lessons = lessons.filter(id => id !== lessonId);
+
+  if (lessons.length < initialLength) { // Only update if a lesson was actually removed
+    const query = `
+      UPDATE courses
+      SET lessons = ?
+      WHERE id = ?
+    `;
+    await mysqlPool.execute(query, [JSON.stringify(lessons), courseId]);
+  }
+  return lessons;
+}
+
+const getInstructorCourses = async (instructorId) => {
+  const query = `
+    SELECT * FROM courses
+    WHERE instructor_id = ?
+  `;
+
+  const [rows] = await mysqlPool.execute(query, [
+    instructorId,
+  ]);
+
+  return rows;
+};
+
 module.exports = {
   createCourse,
   getAllCourses,
   getCourseById,
   updateCourse,
   deleteCourse,
+  addLessonToCourse,
+  removeLessonFromCourse,
+  getInstructorCourses,
 };
