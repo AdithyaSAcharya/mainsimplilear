@@ -14,9 +14,13 @@ const {
   connectRedis,
 } = require("./congif/redisConnection");
 
+const swaggerDocs = require("./congif/swagger");
+
 const app = new express()
 
 app.use(express.json())
+
+swaggerDocs(app);
 
 connectMongo();
 connectMySQL();
