@@ -41,9 +41,29 @@ const getCourseProgress = async (userId, courseId) => {
     return rows;
 };
 
+const checkCourseCompletion = async (userId, courseId) => {
+    // Get total lessons for course
+    const [courseRows] = await mysqlPool.execute('SELECT lessons FROM courses WHERE id = ?', [courseId]);
+    if (courseRows.length === 0) return;
+    
+    let lessons = courseRows[0].lessons ? (typeof courseRows[0].lessons === 'string' ? JSON.parse(courseRows[0].lessons) : courseRows[0].lessons) : [];
+    const totalLessons = lessons.length;
+    if (totalLessons === 0) return;
+
+    // Get completed lessons count
+    const [trackRows] = await mysqlPool.execute('SELECT COUNT(*) as count FROM lesson_tracks WHERE user_id = ? AND course_id = ? AND status = "completed"', [userId, courseId]);
+    const completedLessons = trackRows[0].count;
+
+    // Update enrollment if all completed
+    if (completedLessons >= totalLessons) {
+        await mysqlPool.execute('UPDATE enrollments SET completion_status = "completed" WHERE user_id = ? AND course_id = ?', [userId, courseId]);
+    }
+};
+
 module.exports = {
     createLessonTrack,
     updateLessonStatus,
     getUserLessonStatus,
     getCourseProgress,
+    checkCourseCompletion,
 };

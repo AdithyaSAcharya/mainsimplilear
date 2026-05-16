@@ -33,6 +33,12 @@ const updateLessonStatusController = async (req, res) => {
         }
 
         await updateLessonStatus(userId, courseId, lessonId, status);
+        
+        if (status === 'completed') {
+            const { checkCourseCompletion } = require("../models/lessonTrackModel");
+            await checkCourseCompletion(userId, courseId);
+        }
+
         return res.status(200).json({ success: true, message: "Lesson status updated successfully." });
     } catch (error) {
         console.error("Error updating lesson status:", error);

@@ -41,9 +41,19 @@ const updateEnrollmentStatus = async (enrollmentId, status) => {
     return result;
 };
 
+const checkUserEnrollment = async (userId, courseId) => {
+    const query = `
+        SELECT id FROM enrollments
+        WHERE user_id = ? AND course_id = ?
+    `;
+    const [rows] = await mysqlPool.execute(query, [userId, courseId]);
+    return rows.length > 0;
+};
+
 module.exports = {
     enrollUserInCourse,
     getUserEnrollments,
     getCourseEnrollments,
     updateEnrollmentStatus,
+    checkUserEnrollment,
 };

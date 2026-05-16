@@ -8,6 +8,8 @@ const {
     removeLessonFromCourse,
   } = require("../models/courseModel");
   
+  const { checkUserEnrollment } = require("../models/enrollmentModel");
+  
   const createCourseController = async (
     req,
     res
@@ -66,10 +68,25 @@ const {
   const getCourseByIdController =
     async (req, res) => {
       try {
-        const course =
-          await getCourseById(
-            req.params.id
-          );
+        const course = await getCourseById(req.params.id);
+        
+        let canViewContent = false;
+        if (req.user) {
+            if (course.instructor_id === req.user.id) {
+                canViewContent = true;
+            } else {
+                canViewContent = await checkUserEnrollment(req.user.id, req.params.id);
+            }
+        }
+        
+        if (!canViewContent && course && course.lessons) {
+            // Strip content for non-enrolled users
+            course.lessons = course.lessons.map(lesson => {
+                const lessonObj = lesson.toObject ? lesson.toObject() : lesson;
+                delete lessonObj.content;
+                return lessonObj;
+            });
+        }
   
         return res.status(200).json({
           success: true,

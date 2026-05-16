@@ -108,8 +108,11 @@ router.get(
  *       500:
  *         description: Server error
  */
+const optionalAuthMiddleware = require("../middleware/optionalAuthMiddleware");
+
 router.get(
   "/:id",
+  optionalAuthMiddleware,
   getCourseByIdController
 );
 
