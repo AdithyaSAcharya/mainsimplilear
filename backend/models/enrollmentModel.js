@@ -22,7 +22,7 @@ const getUserEnrollments = async (userId) => {
 
 const getCourseEnrollments = async (courseId) => {
     const query = `
-        SELECT e.*, u.username, u.email
+        SELECT e.*, u.full_name, u.email
         FROM enrollments e
         JOIN users u ON e.user_id = u.id
         WHERE e.course_id = ?

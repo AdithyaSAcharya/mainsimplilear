@@ -12,11 +12,13 @@ const createLessonTrack = async (userId, courseId, lessonId) => {
 
 const updateLessonStatus = async (userId, courseId, lessonId, status) => {
     const query = `
-        UPDATE lesson_tracks
-        SET status = ?, completion_date = CASE WHEN ? = 'completed' THEN NOW() ELSE NULL END
-        WHERE user_id = ? AND course_id = ? AND lesson_id = ?
+        INSERT INTO lesson_tracks (user_id, course_id, lesson_id, status, completion_date)
+        VALUES (?, ?, ?, ?, CASE WHEN ? = 'completed' THEN NOW() ELSE NULL END)
+        ON DUPLICATE KEY UPDATE 
+            status = VALUES(status), 
+            completion_date = VALUES(completion_date)
     `;
-    const [result] = await mysqlPool.execute(query, [status, status, userId, courseId, lessonId]);
+    const [result] = await mysqlPool.execute(query, [userId, courseId, lessonId, status, status]);
     return result;
 };
 

@@ -72,7 +72,7 @@ const {
         
         let canViewContent = false;
         if (req.user) {
-            if (course.instructor_id === req.user.id) {
+            if (course.instructor_id === req.user.id || req.user.role === 'SUPER_ADMIN') {
                 canViewContent = true;
             } else {
                 canViewContent = await checkUserEnrollment(req.user.id, req.params.id);
@@ -102,28 +102,30 @@ const {
       }
     };
   
-  const updateCourseController =
-    async (req, res) => {
-      try {
-        const {
-          title,
-          shortDescription,
-          thumbnail,
-          is_published
-        } = req.body;
-        
-        await updateCourse(
-          title,
-          shortDescription,
-          thumbnail,
-          is_published,
-          req.params.id
-        );
-  
-        return res.status(200).json({
-          success: true,
-          message: "Course updated",
-        });
+  const updateCourseController = async (req, res) => {
+    try {
+      const existingCourse = await getCourseById(req.params.id);
+      if (!existingCourse) {
+        return res.status(404).json({ success: false, message: "Course not found" });
+      }
+
+      const title = req.body.title !== undefined ? req.body.title : existingCourse.title;
+      const shortDescription = req.body.shortDescription !== undefined ? req.body.shortDescription : existingCourse.short_description;
+      const thumbnail = req.body.thumbnail !== undefined ? req.body.thumbnail : existingCourse.thumbnail;
+      const is_published = req.body.is_published !== undefined ? req.body.is_published : existingCourse.is_published;
+      
+      await updateCourse(
+        title,
+        shortDescription,
+        thumbnail,
+        is_published,
+        req.params.id
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Course updated",
+      });
       } catch (error) {
         console.log(error);
   

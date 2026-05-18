@@ -35,8 +35,10 @@ const createCourse = async (
 
 const getAllCourses = async () => {
   const query = `
-    SELECT * FROM courses
-    WHERE is_published = 1
+    SELECT c.*, u.full_name as instructor_name 
+    FROM courses c
+    LEFT JOIN users u ON c.instructor_id = u.id
+    WHERE c.is_published = 1
   `;
 
   const [rows] = await mysqlPool.execute(query);
@@ -46,8 +48,10 @@ const getAllCourses = async () => {
 
 const getCourseById = async (courseId) => {
   const query = `
-    SELECT * FROM courses
-    WHERE id = ?
+    SELECT c.*, u.full_name as instructor_name 
+    FROM courses c
+    LEFT JOIN users u ON c.instructor_id = u.id
+    WHERE c.id = ?
   `;
 
   const [rows] = await mysqlPool.execute(query, [

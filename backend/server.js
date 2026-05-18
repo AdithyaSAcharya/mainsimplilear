@@ -34,6 +34,8 @@ const courseRoutes = require("./routes/courseRoutes");
 const lessonRoutes = require("./routes/lessonRoutes");
 const enrollmentRoutes = require("./routes/enrollmentRoutes");
 const lessonTrackRoutes = require("./routes/lessonTrackRoutes");
+const adminRoutes = require('./routes/adminRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 app.use(cors())
 
@@ -48,6 +50,10 @@ app.use("/api/lessons", lessonRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
 
 app.use("/api/lesson-tracks", lessonTrackRoutes);
+
+app.use("/api/admin", adminRoutes);
+
+app.use("/api/uploads", uploadRoutes);
 
 app.listen(3000,()=>{
     console.log("app is running on port 3000")

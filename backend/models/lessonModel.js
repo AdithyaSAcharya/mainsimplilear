@@ -18,6 +18,10 @@ const lessonSchema = new mongoose.Schema({
         type: String, // Changed to String to store MySQL course ID
         required: true
     },
+    thumbnail: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now

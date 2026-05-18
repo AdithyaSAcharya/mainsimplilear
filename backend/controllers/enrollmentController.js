@@ -3,6 +3,7 @@ const {
     getUserEnrollments,
     getCourseEnrollments,
     updateEnrollmentStatus,
+    checkUserEnrollment,
 } = require("../models/enrollmentModel");
 
 const enrollUserInCourseController = async (req, res) => {
@@ -12,6 +13,11 @@ const enrollUserInCourseController = async (req, res) => {
 
         if (!courseId) {
             return res.status(400).json({ success: false, message: "Course ID is required." });
+        }
+
+        const isAlreadyEnrolled = await checkUserEnrollment(userId, courseId);
+        if (isAlreadyEnrolled) {
+            return res.status(400).json({ success: false, message: "User is already enrolled in this course." });
         }
 
         const result = await enrollUserInCourse(userId, courseId);

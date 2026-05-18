@@ -2,6 +2,7 @@ const {
   createUser,
   getUserByEmail,
 } = require("../models/userModel");
+const bcrypt = require("bcryptjs");
 
 const {
   getInstructorCourses,
