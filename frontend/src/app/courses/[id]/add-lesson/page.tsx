@@ -5,7 +5,8 @@ import { fetchApi, uploadFile } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, ImagePlus, X } from 'lucide-react';
+import { ArrowLeft, Film, ImagePlus, X } from 'lucide-react';
+import { uploadLessonVideo } from '@/lib/lessonVideo';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
@@ -18,6 +19,8 @@ export default function AddLesson() {
   const [newLesson, setNewLesson] = useState({ title: '', description: '', content: '' });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +62,12 @@ export default function AddLesson() {
         const formData = new FormData();
         formData.append('image', imageFile);
         await uploadFile(`/uploads/lesson/${res._id}/thumbnail`, formData);
+      }
+
+      // Step 4: Upload video to Cloudinary if provided
+      if (videoFile && res._id) {
+        toast.message('Uploading video to Cloudinary…');
+        await uploadLessonVideo(res._id, videoFile);
       }
 
       toast.success('Lesson added successfully!');
@@ -130,6 +139,43 @@ export default function AddLesson() {
                   <ImagePlus size={32} className="text-gray-400" />
                   <span className="text-sm text-gray-500 font-medium">Click to upload thumbnail</span>
                   <span className="text-xs text-gray-400">JPG, PNG, WEBP — max 5MB</span>
+                </button>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">Lesson video (optional)</label>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setVideoFile(f);
+                }}
+              />
+              {videoFile ? (
+                <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-gray-50">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Film size={24} className="text-gray-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{videoFile.name}</p>
+                      <p className="text-xs text-gray-500">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB — uploads on publish</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setVideoFile(null)} className="text-gray-400 hover:text-red-500 p-1">
+                    <X size={18} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => videoInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition gap-2"
+                >
+                  <Film size={28} className="text-gray-400" />
+                  <span className="text-sm text-gray-500">Add lesson video (Cloudinary)</span>
                 </button>
               )}
             </div>

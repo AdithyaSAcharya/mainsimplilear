@@ -138,3 +138,14 @@ pre.ql-syntax {
   font-size: 0.9rem;
   margin: 1rem 0;
 }
+
+/* Lesson rich-text images (Quill editor) */
+.lesson-content img {
+  display: block;
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  margin: 1.25rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+}

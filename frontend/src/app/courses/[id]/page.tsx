@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { LessonQuizzes } from '@/components/quiz/LessonQuizzes';
+import { LessonVideoPlayer } from '@/components/lesson/LessonVideoPlayer';
 
 export default function CourseDetails() {
   const { id } = useParams();
@@ -88,6 +90,15 @@ export default function CourseDetails() {
     }
   };
 
+  const openLesson = async (lesson: { _id: string }) => {
+    try {
+      const fresh = await fetchApi(`/lessons/${lesson._id}`);
+      setSelectedLesson(fresh);
+    } catch {
+      setSelectedLesson(lesson);
+    }
+  };
+
   const handleDeleteLesson = async (lessonId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this lesson?')) return;
@@ -116,7 +127,16 @@ export default function CourseDetails() {
           <ArrowLeft size={18} /> Back to Course Overview
         </Button>
         <Card className="shadow-2xl border-0 overflow-hidden">
-          <div className="h-2 bg-black w-full"></div>
+          <div className="h-2 bg-black w-full" />
+          {selectedLesson.thumbnail && (
+            <div className="w-full bg-gray-100 border-b">
+              <img
+                src={selectedLesson.thumbnail}
+                alt={selectedLesson.title}
+                className="w-full max-h-[min(70vh,520px)] object-contain mx-auto block"
+              />
+            </div>
+          )}
           <CardHeader className="flex flex-col md:flex-row justify-between md:items-start gap-4 border-b bg-gray-50 pb-8 pt-8 px-8">
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900 tracking-tight">{selectedLesson.title}</CardTitle>
@@ -133,10 +153,17 @@ export default function CourseDetails() {
             )}
           </CardHeader>
           <CardContent className="p-8 md:p-12 min-h-[400px]">
+             {(isEnrolled || role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') && selectedLesson.videoUrl && (
+               <LessonVideoPlayer
+                 videoUrl={selectedLesson.videoUrl}
+                 title={selectedLesson.title}
+               />
+             )}
              {isEnrolled && selectedLesson.content ? (
-               <div className="prose max-w-none prose-lg text-gray-800">
-                 <div dangerouslySetInnerHTML={{ __html: selectedLesson.content }}></div>
-               </div>
+               <div
+                 className="lesson-content prose max-w-none prose-lg text-gray-800"
+                 dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
+               />
              ) : (
                <div className="py-20 px-8 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-300">
                  <LockIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -144,6 +171,12 @@ export default function CourseDetails() {
                  <p className="text-lg text-gray-500 font-medium">Please enroll in this course to view the full lesson content.</p>
                </div>
              )}
+             <LessonQuizzes
+               courseId={id as string}
+               lessonId={selectedLesson._id}
+               role={role}
+               isEnrolled={isEnrolled}
+             />
           </CardContent>
         </Card>
       </div>
@@ -197,11 +230,18 @@ export default function CourseDetails() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800"><PlayCircle size={20} className="text-black" /> Course Content</h2>
             {role === 'INSTRUCTOR' && (
-              <Link href={`/courses/${id}/add-lesson`}>
-                <Button className="bg-black hover:bg-gray-800 text-white font-semibold rounded-md px-4 py-2 shadow-sm">
-                  + Add New Lesson
-                </Button>
-              </Link>
+              <div className="flex gap-2">
+                <Link href={`/courses/${id}/add-quiz`}>
+                  <Button variant="outline" className="font-semibold rounded-md px-4 py-2 shadow-sm">
+                    + Add Quiz
+                  </Button>
+                </Link>
+                <Link href={`/courses/${id}/add-lesson`}>
+                  <Button className="bg-black hover:bg-gray-800 text-white font-semibold rounded-md px-4 py-2 shadow-sm">
+                    + Add New Lesson
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
           <div className="space-y-4">
@@ -211,13 +251,13 @@ export default function CourseDetails() {
               return (
                 <div 
                   key={l._id} 
-                  onClick={() => setSelectedLesson(l)}
+                  onClick={() => openLesson(l)}
                   className={`group bg-white p-6 rounded-xl border shadow-sm cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${progress === 'completed' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-gray-900'}`}
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-start gap-4">
                       {l.thumbnail && (
-                        <div className="flex-shrink-0 w-16 h-12 rounded-md overflow-hidden border border-gray-100">
+                        <div className="flex-shrink-0 w-28 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                           <img src={l.thumbnail} alt={l.title} className="w-full h-full object-cover" />
                         </div>
                       )}
@@ -229,6 +269,11 @@ export default function CourseDetails() {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-black transition-colors">{l.title}</h3>
                         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{l.description}</p>
+                        {l.videoUrl && (
+                          <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                            Video lesson
+                          </span>
+                        )}
                       </div>
                     </div>
                     {(role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') ? (

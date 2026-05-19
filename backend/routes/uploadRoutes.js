@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-const { uploadCourseImage, uploadLessonImage } = require('../congif/cloudinary');
+const {
+  uploadCourseImage,
+  uploadLessonImage,
+  uploadLessonVideo,
+} = require('../congif/cloudinary');
 const { mysqlPool } = require('../congif/mySqlConnection');
 const Lesson = require('../models/lessonModel');
 const mongoose = require('mongoose');
@@ -10,7 +14,7 @@ const mongoose = require('mongoose');
  * @swagger
  * tags:
  *   name: Uploads
- *   description: Image upload APIs (Cloudinary)
+ *   description: Image and video upload APIs (Cloudinary)
  */
 
 /**
@@ -28,7 +32,7 @@ router.post(
         return res.status(400).json({ success: false, message: 'No image file provided.' });
       }
 
-      const imageUrl = req.file.path; // Cloudinary URL
+      const imageUrl = req.file.path;
 
       await mysqlPool.execute(
         'UPDATE courses SET thumbnail = ? WHERE id = ?',
@@ -65,7 +69,15 @@ router.post(
         return res.status(400).json({ success: false, message: 'Invalid lesson ID.' });
       }
 
-      const imageUrl = req.file.path; // Cloudinary URL
+      const imageUrl =
+        req.file.path || req.file.secure_url || req.file.url;
+
+      if (!imageUrl) {
+        return res.status(500).json({
+          success: false,
+          message: 'Upload succeeded but no image URL was returned.',
+        });
+      }
 
       await Lesson.findByIdAndUpdate(lessonId, { thumbnail: imageUrl, updatedAt: Date.now() });
 
@@ -77,6 +89,89 @@ router.post(
     } catch (error) {
       console.error('Error uploading lesson thumbnail:', error);
       return res.status(500).json({ success: false, message: 'Server error during upload.' });
+    }
+  }
+);
+
+/**
+ * POST /api/uploads/lesson/:lessonId/video
+ * Upload a lesson video to Cloudinary
+ */
+router.post(
+  '/lesson/:lessonId/video',
+  authMiddleware,
+  uploadLessonVideo.single('video'),
+  async (req, res) => {
+    try {
+      const { lessonId } = req.params;
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No video file provided.' });
+      }
+      if (!mongoose.Types.ObjectId.isValid(lessonId)) {
+        return res.status(400).json({ success: false, message: 'Invalid lesson ID.' });
+      }
+
+      const videoUrl =
+        req.file.path || req.file.secure_url || req.file.url;
+
+      if (!videoUrl) {
+        return res.status(500).json({
+          success: false,
+          message: 'Upload succeeded but no video URL was returned.',
+        });
+      }
+
+      await Lesson.findByIdAndUpdate(lessonId, {
+        videoUrl,
+        updatedAt: Date.now(),
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Lesson video uploaded successfully.',
+        url: videoUrl,
+      });
+    } catch (error) {
+      console.error('Error uploading lesson video:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Server error during video upload.',
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/uploads/lesson/:lessonId/video
+ * Remove lesson video reference from MongoDB
+ */
+router.delete(
+  '/lesson/:lessonId/video',
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const { lessonId } = req.params;
+      const lesson = await Lesson.findById(lessonId);
+
+      if (!lesson) {
+        return res.status(404).json({ success: false, message: 'Lesson not found.' });
+      }
+
+      await Lesson.findByIdAndUpdate(lessonId, {
+        videoUrl: null,
+        updatedAt: Date.now(),
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Lesson video removed.',
+      });
+    } catch (error) {
+      console.error('Error deleting lesson video:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to remove video.',
+      });
     }
   }
 );

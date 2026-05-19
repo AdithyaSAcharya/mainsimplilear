@@ -74,7 +74,11 @@ const getCourseById = async (courseId) => {
             }
           })
         );
-        course.lessons = lessons.filter(lesson => lesson !== null); // Filter out nulls
+        course.lessons = lessons
+          .filter((lesson) => lesson !== null)
+          .map((lesson) =>
+            lesson.toObject ? lesson.toObject() : lesson
+          );
       } else {
         course.lessons = [];
       }

@@ -56,10 +56,23 @@ const updateLesson = async (req, res) => {
     }
 
     try {
+        const existingLesson = await Lesson.findById(id);
+        if (!existingLesson) {
+            return res.status(404).json({ message: 'Lesson not found.' });
+        }
+
         const updatedLesson = await Lesson.findByIdAndUpdate(
             id,
-            { title, description, content, courseId, updatedAt: Date.now() },
-            { new: true, runValidators: true } // Return the updated document and run schema validators
+            {
+                title,
+                description,
+                content,
+                courseId,
+                thumbnail: existingLesson.thumbnail,
+                videoUrl: existingLesson.videoUrl,
+                updatedAt: Date.now(),
+            },
+            { new: true, runValidators: true }
         );
 
         if (!updatedLesson) {

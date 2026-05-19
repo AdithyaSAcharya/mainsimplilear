@@ -36,14 +36,15 @@ const enrollmentRoutes = require("./routes/enrollmentRoutes");
 const lessonTrackRoutes = require("./routes/lessonTrackRoutes");
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const quizRoutes = require('./routes/quizRoutes');
 
 app.use(cors())
 
 app.use("/api/auth", authRoutes);
 
-app.use("/api/instructors",instructorRoutes);
+app.use("/api/instructors", instructorRoutes);
 
-app.use("/api/courses",courseRoutes);
+app.use("/api/courses", courseRoutes);
 
 app.use("/api/lessons", lessonRoutes);
 
@@ -55,6 +56,8 @@ app.use("/api/admin", adminRoutes);
 
 app.use("/api/uploads", uploadRoutes);
 
-app.listen(3000,()=>{
-    console.log("app is running on port 3000")
+app.use("/api/quizzes", quizRoutes);
+
+app.listen(3000, () => {
+  console.log("app is running on port 3000")
 })

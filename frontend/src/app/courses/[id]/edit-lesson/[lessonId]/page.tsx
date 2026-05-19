@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, ImagePlus, X } from 'lucide-react';
+import { LessonVideoUpload } from '@/components/lesson/LessonVideoUpload';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
@@ -15,7 +16,14 @@ const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false, loadin
 export default function EditLesson() {
   const { id, lessonId } = useParams();
   const router = useRouter();
-  const [lesson, setLesson] = useState({ title: '', description: '', content: '', courseId: id, thumbnail: '' });
+  const [lesson, setLesson] = useState({
+    title: '',
+    description: '',
+    content: '',
+    courseId: id,
+    thumbnail: '',
+    videoUrl: null as string | null,
+  });
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -31,6 +39,7 @@ export default function EditLesson() {
           content: res.content || '',
           courseId: id as string,
           thumbnail: res.thumbnail || '',
+          videoUrl: res.videoUrl || null,
         });
         if (res.thumbnail) setImagePreview(res.thumbnail);
         setLoading(false);
@@ -164,6 +173,14 @@ export default function EditLesson() {
                 </button>
               )}
             </div>
+
+            <LessonVideoUpload
+              lessonId={lessonId as string}
+              videoUrl={lesson.videoUrl}
+              onVideoChange={(videoUrl) =>
+                setLesson((prev) => ({ ...prev, videoUrl }))
+              }
+            />
 
             <div>
               <label className="text-sm font-semibold text-gray-700 mb-2 block">Rich Content</label>

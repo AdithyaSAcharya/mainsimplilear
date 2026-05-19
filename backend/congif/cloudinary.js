@@ -26,7 +26,25 @@ const lessonImageStorage = new CloudinaryStorage({
   },
 });
 
+const lessonVideoStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'learnstack/lessons/videos',
+    resource_type: 'video',
+    allowed_formats: ['mp4', 'mov', 'webm', 'mkv', 'avi'],
+  },
+});
+
 const uploadCourseImage = multer({ storage: courseImageStorage });
 const uploadLessonImage = multer({ storage: lessonImageStorage });
+const uploadLessonVideo = multer({
+  storage: lessonVideoStorage,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+});
 
-module.exports = { cloudinary, uploadCourseImage, uploadLessonImage };
+module.exports = {
+  cloudinary,
+  uploadCourseImage,
+  uploadLessonImage,
+  uploadLessonVideo,
+};
