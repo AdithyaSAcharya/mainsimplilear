@@ -6,6 +6,8 @@ const {
     getLessonQuizzes,
 } = require("../models/quizModel");
 
+const { redisClient } = require("../congif/redisConnection");
+
 const createQuizController =
     async (req, res) => {
         try {
@@ -64,6 +66,10 @@ const updateQuizController =
                     req.body
                 );
 
+            if (redisClient.isReady) {
+                await redisClient.del(`quiz:${req.params.quizId}:safe_data`);
+            }
+
             return res.json({
                 success: true,
                 message:
@@ -88,6 +94,10 @@ const deleteQuizController =
                 req.params.quizId
             );
 
+            if (redisClient.isReady) {
+                await redisClient.del(`quiz:${req.params.quizId}:safe_data`);
+            }
+
             return res.json({
                 success: true,
                 message:
@@ -107,12 +117,21 @@ const deleteQuizController =
 const getQuizByIdController =
     async (req, res) => {
         try {
+            if (redisClient.isReady) {
+                const cachedQuiz = await redisClient.get(`quiz:${req.params.quizId}:safe_data`);
+                if (cachedQuiz) {
+                    return res.json({
+                        success: true,
+                        quiz: JSON.parse(cachedQuiz),
+                        source: "cache",
+                    });
+                }
+            }
+
             const quiz =
                 await getQuizById(
                     req.params.quizId
                 );
-
-            console.log("here in the flow")
 
             if (!quiz) {
                 return res.status(404).json({
@@ -129,14 +148,14 @@ const getQuizByIdController =
                 safeQuiz.questions.map(
                     (question) => {
                         delete question.correctAnswer;
-
                         delete question.answer;
-
                         return question;
                     }
                 );
 
-            console.log("here in the flow")
+            if (redisClient.isReady) {
+                await redisClient.setEx(`quiz:${req.params.quizId}:safe_data`, 43200, JSON.stringify(safeQuiz)); // 12 hours TTL
+            }
 
             return res.json({
                 success: true,

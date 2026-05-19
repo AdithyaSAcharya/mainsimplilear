@@ -1,5 +1,6 @@
 const Lesson = require('../models/lessonModel');
 const mongoose = require('mongoose');
+const { redisClient } = require("../congif/redisConnection");
 
 // Create a new lesson
 const createLesson = async (req, res) => {
@@ -35,10 +36,22 @@ const getLessonById = async (req, res) => {
     }
 
     try {
+        if (redisClient.isReady) {
+            const cachedLesson = await redisClient.get(`lesson:${id}:data`);
+            if (cachedLesson) {
+                return res.status(200).json(JSON.parse(cachedLesson));
+            }
+        }
+
         const lesson = await Lesson.findById(id);
         if (!lesson) {
             return res.status(404).json({ message: 'Lesson not found.' });
         }
+
+        if (redisClient.isReady) {
+            await redisClient.setEx(`lesson:${id}:data`, 86400, JSON.stringify(lesson)); // 24 hours TTL
+        }
+
         res.status(200).json(lesson);
     } catch (error) {
         console.error('Error fetching lesson by ID:', error);
@@ -78,6 +91,14 @@ const updateLesson = async (req, res) => {
         if (!updatedLesson) {
             return res.status(404).json({ message: 'Lesson not found.' });
         }
+
+        if (redisClient.isReady) {
+            await redisClient.del(`lesson:${id}:data`);
+            if (courseId) {
+                await redisClient.del(`course:${courseId}:lessons`);
+            }
+        }
+
         res.status(200).json(updatedLesson);
     } catch (error) {
         console.error('Error updating lesson:', error);
@@ -98,6 +119,14 @@ const deleteLesson = async (req, res) => {
         if (!deletedLesson) {
             return res.status(404).json({ message: 'Lesson not found.' });
         }
+
+        if (redisClient.isReady) {
+            await redisClient.del(`lesson:${id}:data`);
+            if (deletedLesson.courseId) {
+                await redisClient.del(`course:${deletedLesson.courseId}:lessons`);
+            }
+        }
+
         res.status(200).json({ message: 'Lesson deleted successfully.' });
     } catch (error) {
         console.error('Error deleting lesson:', error);
@@ -110,7 +139,19 @@ const getLessonsByCourseId = async (req, res) => {
     const { courseId } = req.params;
 
     try {
+        if (redisClient.isReady) {
+            const cachedLessons = await redisClient.get(`course:${courseId}:lessons`);
+            if (cachedLessons) {
+                return res.status(200).json(JSON.parse(cachedLessons));
+            }
+        }
+
         const lessons = await Lesson.find({ courseId: courseId }).sort({ createdAt: 1 }); // Sort by creation date
+        
+        if (redisClient.isReady) {
+            await redisClient.setEx(`course:${courseId}:lessons`, 86400, JSON.stringify(lessons));
+        }
+
         res.status(200).json(lessons);
     } catch (error) {
         console.error('Error fetching lessons by course ID:', error);

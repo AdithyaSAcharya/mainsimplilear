@@ -6,6 +6,8 @@ const {
     checkUserEnrollment,
 } = require("../models/enrollmentModel");
 
+const { redisClient } = require("../congif/redisConnection");
+
 const enrollUserInCourseController = async (req, res) => {
     try {
         const { courseId } = req.body;
@@ -21,6 +23,12 @@ const enrollUserInCourseController = async (req, res) => {
         }
 
         const result = await enrollUserInCourse(userId, courseId);
+
+        if (redisClient.isReady) {
+            await redisClient.del(`user:${userId}:enrollments`);
+            await redisClient.del(`course:${courseId}:enrollments`);
+        }
+
         return res.status(201).json({ success: true, message: "User enrolled in course successfully.", enrollmentId: result.insertId });
     } catch (error) {
         console.error("Error enrolling user in course:", error);
@@ -32,7 +40,19 @@ const getUserEnrollmentsController = async (req, res) => {
     try {
         const userId = req.user.id; // Assuming user ID is available from authentication middleware
 
+        if (redisClient.isReady) {
+            const cachedEnrollments = await redisClient.get(`user:${userId}:enrollments`);
+            if (cachedEnrollments) {
+                return res.status(200).json({ success: true, enrollments: JSON.parse(cachedEnrollments), source: "cache" });
+            }
+        }
+
         const enrollments = await getUserEnrollments(userId);
+
+        if (redisClient.isReady) {
+            await redisClient.setEx(`user:${userId}:enrollments`, 86400, JSON.stringify(enrollments)); // 24 hours TTL
+        }
+
         return res.status(200).json({ success: true, enrollments });
     } catch (error) {
         console.error("Error fetching user enrollments:", error);
@@ -44,7 +64,19 @@ const getCourseEnrollmentsController = async (req, res) => {
     try {
         const { courseId } = req.params;
 
+        if (redisClient.isReady) {
+            const cachedEnrollments = await redisClient.get(`course:${courseId}:enrollments`);
+            if (cachedEnrollments) {
+                return res.status(200).json({ success: true, enrollments: JSON.parse(cachedEnrollments), source: "cache" });
+            }
+        }
+
         const enrollments = await getCourseEnrollments(courseId);
+
+        if (redisClient.isReady) {
+            await redisClient.setEx(`course:${courseId}:enrollments`, 86400, JSON.stringify(enrollments)); // 24 hours TTL
+        }
+
         return res.status(200).json({ success: true, enrollments });
     } catch (error) {
         console.error("Error fetching course enrollments:", error);

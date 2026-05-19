@@ -9,6 +9,7 @@ const {
   } = require("../models/courseModel");
   
   const { checkUserEnrollment } = require("../models/enrollmentModel");
+  const { redisClient } = require("../congif/redisConnection");
   
   const createCourseController = async (
     req,
@@ -30,6 +31,10 @@ const {
         mongoCourseContentId || null
       );
   
+      if (redisClient.isReady) {
+        await redisClient.del("courses:all");
+      }
+
       return res.status(201).json({
         success: true,
         message: "Course created",
@@ -48,9 +53,24 @@ const {
   const getAllCoursesController =
     async (req, res) => {
       try {
+        if (redisClient.isReady) {
+          const cachedCourses = await redisClient.get("courses:all");
+          if (cachedCourses) {
+            return res.status(200).json({
+              success: true,
+              courses: JSON.parse(cachedCourses),
+              source: "cache"
+            });
+          }
+        }
+
         const courses =
           await getAllCourses();
-  
+
+        if (redisClient.isReady) {
+          await redisClient.setEx("courses:all", 86400, JSON.stringify(courses)); // 24 hours TTL
+        }
+
         return res.status(200).json({
           success: true,
           courses,
@@ -68,29 +88,49 @@ const {
   const getCourseByIdController =
     async (req, res) => {
       try {
-        const course = await getCourseById(req.params.id);
-        
+        let course = null;
+        if (redisClient.isReady) {
+          const cachedCourse = await redisClient.get(`course:${req.params.id}:details`);
+          if (cachedCourse) {
+            course = JSON.parse(cachedCourse);
+          }
+        }
+
+        if (!course) {
+          course = await getCourseById(req.params.id);
+          if (course && redisClient.isReady) {
+            await redisClient.setEx(`course:${req.params.id}:details`, 86400, JSON.stringify(course));
+          }
+        }
+
+        if (!course) {
+           return res.status(404).json({ success: false, message: "Course not found" });
+        }
+
+        // Deep copy to prevent mutating the cached reference if it's an object in memory
+        let courseObj = typeof course.toObject === 'function' ? course.toObject() : JSON.parse(JSON.stringify(course));
+
         let canViewContent = false;
         if (req.user) {
-            if (course.instructor_id === req.user.id || req.user.role === 'SUPER_ADMIN') {
+            if (courseObj.instructor_id === req.user.id || req.user.role === 'SUPER_ADMIN') {
                 canViewContent = true;
             } else {
                 canViewContent = await checkUserEnrollment(req.user.id, req.params.id);
             }
         }
         
-        if (!canViewContent && course && course.lessons) {
+        if (!canViewContent && courseObj && courseObj.lessons) {
             // Strip content for non-enrolled users
-            course.lessons = course.lessons.map(lesson => {
-                const lessonObj = lesson.toObject ? lesson.toObject() : lesson;
-                delete lessonObj.content;
-                return lessonObj;
+            courseObj.lessons = courseObj.lessons.map(lesson => {
+                const lessonItem = lesson.toObject ? lesson.toObject() : lesson;
+                delete lessonItem.content;
+                return lessonItem;
             });
         }
   
         return res.status(200).json({
           success: true,
-          course,
+          course: courseObj,
         });
       } catch (error) {
         console.log(error);
@@ -122,6 +162,11 @@ const {
         req.params.id
       );
 
+      if (redisClient.isReady) {
+        await redisClient.del("courses:all");
+        await redisClient.del(`course:${req.params.id}:details`);
+      }
+
       return res.status(200).json({
         success: true,
         message: "Course updated",
@@ -141,6 +186,11 @@ const {
       try {
         await deleteCourse(req.params.id);
   
+        if (redisClient.isReady) {
+          await redisClient.del("courses:all");
+          await redisClient.del(`course:${req.params.id}:details`);
+        }
+
         return res.status(200).json({
           success: true,
           message: "Course deleted",
@@ -166,6 +216,10 @@ const {
 
       await addLessonToCourse(courseId, lessonId);
 
+      if (redisClient.isReady) {
+        await redisClient.del(`course:${courseId}:details`);
+      }
+
       return res.status(200).json({ success: true, message: "Lesson added to course." });
     } catch (error) {
       console.log(error);
@@ -183,6 +237,10 @@ const {
       }
 
       await removeLessonFromCourse(courseId, lessonId);
+
+      if (redisClient.isReady) {
+        await redisClient.del(`course:${courseId}:details`);
+      }
 
       return res.status(200).json({ success: true, message: "Lesson removed from course." });
     } catch (error) {

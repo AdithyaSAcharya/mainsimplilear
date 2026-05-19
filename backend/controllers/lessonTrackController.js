@@ -5,6 +5,8 @@ const {
     getCourseProgress,
 } = require("../models/lessonTrackModel");
 
+const { redisClient } = require("../congif/redisConnection");
+
 const createLessonTrackController = async (req, res) => {
     try {
         const { courseId, lessonId } = req.body;
@@ -15,6 +17,12 @@ const createLessonTrackController = async (req, res) => {
         }
 
         await createLessonTrack(userId, courseId, lessonId);
+
+        if (redisClient.isReady) {
+            await redisClient.del(`user:${userId}:course:${courseId}:progress`);
+            await redisClient.del(`user:${userId}:course:${courseId}:lesson:${lessonId}:status`);
+        }
+
         return res.status(201).json({ success: true, message: "Lesson track created/updated successfully." });
     } catch (error) {
         console.error("Error creating/updating lesson track:", error);
@@ -39,6 +47,11 @@ const updateLessonStatusController = async (req, res) => {
             await checkCourseCompletion(userId, courseId);
         }
 
+        if (redisClient.isReady) {
+            await redisClient.del(`user:${userId}:course:${courseId}:progress`);
+            await redisClient.del(`user:${userId}:course:${courseId}:lesson:${lessonId}:status`);
+        }
+
         return res.status(200).json({ success: true, message: "Lesson status updated successfully." });
     } catch (error) {
         console.error("Error updating lesson status:", error);
@@ -51,10 +64,22 @@ const getUserLessonStatusController = async (req, res) => {
         const { courseId, lessonId } = req.params;
         const userId = req.user.id;
 
+        if (redisClient.isReady) {
+            const cachedStatus = await redisClient.get(`user:${userId}:course:${courseId}:lesson:${lessonId}:status`);
+            if (cachedStatus) {
+                return res.status(200).json({ success: true, status: JSON.parse(cachedStatus), source: "cache" });
+            }
+        }
+
         const status = await getUserLessonStatus(userId, courseId, lessonId);
         if (!status) {
             return res.status(404).json({ success: false, message: "Lesson track not found for this user and lesson." });
         }
+
+        if (redisClient.isReady) {
+            await redisClient.setEx(`user:${userId}:course:${courseId}:lesson:${lessonId}:status`, 86400, JSON.stringify(status));
+        }
+
         return res.status(200).json({ success: true, status });
     } catch (error) {
         console.error("Error fetching user lesson status:", error);
@@ -67,7 +92,19 @@ const getCourseProgressController = async (req, res) => {
         const { courseId } = req.params;
         const userId = req.user.id;
 
+        if (redisClient.isReady) {
+            const cachedProgress = await redisClient.get(`user:${userId}:course:${courseId}:progress`);
+            if (cachedProgress) {
+                return res.status(200).json({ success: true, progress: JSON.parse(cachedProgress), source: "cache" });
+            }
+        }
+
         const progress = await getCourseProgress(userId, courseId);
+
+        if (redisClient.isReady) {
+            await redisClient.setEx(`user:${userId}:course:${courseId}:progress`, 3600, JSON.stringify(progress));
+        }
+
         return res.status(200).json({ success: true, progress });
     } catch (error) {
         console.error("Error fetching course progress:", error);

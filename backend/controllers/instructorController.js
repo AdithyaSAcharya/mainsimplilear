@@ -8,6 +8,8 @@ const {
   getInstructorCourses,
 } = require("../models/courseModel");
 
+const { redisClient } = require("../congif/redisConnection");
+
 const createInstructor = async (
   req,
   res
@@ -56,7 +58,20 @@ const createInstructor = async (
 const getInstructorCoursesController = async (req, res) => {
   try {
     const instructorId = req.user.id;
+
+    if (redisClient.isReady) {
+        const cachedCourses = await redisClient.get(`instructor:${instructorId}:courses`);
+        if (cachedCourses) {
+            return res.status(200).json({ success: true, courses: JSON.parse(cachedCourses), source: "cache" });
+        }
+    }
+
     const courses = await getInstructorCourses(instructorId);
+
+    if (redisClient.isReady) {
+        await redisClient.setEx(`instructor:${instructorId}:courses`, 3600, JSON.stringify(courses)); // 1 hour TTL
+    }
+
     return res.status(200).json({ success: true, courses });
   } catch (error) {
     console.log(error);

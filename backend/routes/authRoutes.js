@@ -6,6 +6,8 @@ const {
   signout,
 } = require("../controllers/authController");
 
+const authRateLimiter = require("../middleware/authRateLimiter");
+
 const router = express.Router();
 
 /**
@@ -47,7 +49,7 @@ const router = express.Router();
  *       400:
  *         description: Validation failed
  */
-router.post("/signup", signup);
+router.post("/signup", authRateLimiter, signup);
 
 /**
  * @swagger
@@ -77,7 +79,7 @@ router.post("/signup", signup);
  *       400:
  *         description: Invalid credentials
  */
-router.post("/signin", signin);
+router.post("/signin", authRateLimiter, signin);
 
 /**
  * @swagger
