@@ -10,15 +10,45 @@ import Link from 'next/link';
 
 export default function Home() {
   const [courses, setCourses] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageCache, setPageCache] = useState<Record<number, { courses: any[], totalPages: number }>>({});
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<number[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [role, setRole] = useState<string>('');
   const [userId, setUserId] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    fetchApi('/courses').then(res => setCourses(res.courses)).catch(console.error);
-    
+    if (pageCache[page]) {
+      // Use cached data if we've already visited this page
+      setCourses(pageCache[page].courses);
+      setTotalPages(pageCache[page].totalPages);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    fetchApi(`/courses?page=${page}&limit=2`)
+      .then(res => {
+        const fetchedCourses = res.courses || [];
+        const fetchedTotalPages = res.pagination ? res.pagination.totalPages : 1;
+        
+        setCourses(fetchedCourses);
+        setTotalPages(fetchedTotalPages);
+        
+        // Save to cache
+        setPageCache(prev => ({
+          ...prev,
+          [page]: { courses: fetchedCourses, totalPages: fetchedTotalPages }
+        }));
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [page]);
+
+  useEffect(() => {
     const currentRole = (localStorage.getItem('role') || '').toUpperCase();
     setRole(currentRole);
 
@@ -63,6 +93,14 @@ export default function Home() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50/50 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50/50 pb-24 w-full">
       {/* Hero Section */}
@@ -92,7 +130,7 @@ export default function Home() {
               </Link>
             </div>
           </header>
-          
+
           <div className="container mx-auto px-6 pt-36 pb-28 relative z-10 text-center">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-zinc-800/80 border border-zinc-700 text-zinc-300 mb-6 backdrop-blur-md">
               🚀 Welcome to LearnStack 2.0
@@ -104,9 +142,9 @@ export default function Home() {
               Master the most in-demand skills through world-class courses designed by industry experts.
             </p>
             <div className="flex justify-center">
-              <Button 
-                size="lg" 
-                className="bg-white hover:bg-zinc-200 text-black font-extrabold rounded-xl px-8 py-6 transition-all hover:scale-[1.02] active:scale-100 shadow-xl shadow-white/5 flex items-center gap-2" 
+              <Button
+                size="lg"
+                className="bg-white hover:bg-zinc-200 text-black font-extrabold rounded-xl px-8 py-6 transition-all hover:scale-[1.02] active:scale-100 shadow-xl shadow-white/5 flex items-center gap-2"
                 onClick={() => {
                   document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth' });
                 }}
@@ -140,22 +178,22 @@ export default function Home() {
               <p className="text-zinc-500">Please check back soon.</p>
             </div>
           )}
-          
+
           {courses.map(c => {
             const isEnrolled = enrolledCourseIds.includes(Number(c.id));
             const lessonsCount = c.lessons ? (typeof c.lessons === 'string' ? JSON.parse(c.lessons).length : c.lessons.length) : 0;
             return (
-              <div 
-                key={c.id} 
+              <div
+                key={c.id}
                 className="group relative bg-white border border-gray-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row overflow-hidden w-full md:h-56"
               >
                 {/* Thumbnail / Image Container */}
                 <div className="md:w-56 h-48 md:h-full flex-shrink-0 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-black">
                   {c.thumbnail ? (
-                    <img 
-                      src={c.thumbnail} 
-                      alt={c.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" 
+                    <img
+                      src={c.thumbnail}
+                      alt={c.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-white/40 gap-2 p-6">
@@ -206,26 +244,26 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Actions Sidebar */}
                 <div className="bg-zinc-50/50 p-6 md:w-60 border-t md:border-t-0 md:border-l border-zinc-100 flex flex-col justify-center items-center gap-3 shrink-0 md:h-full">
                   {role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(c.instructor_id) === userId) ? (
-                    <Button 
-                      className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100" 
+                    <Button
+                      className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100"
                       onClick={() => router.push(`/courses/${c.id}`)}
                     >
                       Manage Course
                     </Button>
                   ) : isEnrolled ? (
-                    <Button 
-                      className="w-full py-6 rounded-xl text-sm font-bold bg-green-600 hover:bg-green-750 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-2" 
+                    <Button
+                      className="w-full py-6 rounded-xl text-sm font-bold bg-green-600 hover:bg-green-750 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-2"
                       onClick={() => router.push(`/courses/${c.id}`)}
                     >
                       <PlayCircle className="h-5 w-5" /> Continue Study
                     </Button>
                   ) : (
-                    <Button 
-                      className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-1.5" 
+                    <Button
+                      className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-1.5"
                       onClick={() => handleEnroll(c.id)}
                     >
                       Enroll Now <ArrowRight className="h-4 w-4" />
@@ -237,6 +275,30 @@ export default function Home() {
             );
           })}
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 mt-12">
+            <Button
+              variant="outline"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="font-bold rounded-xl"
+            >
+              Previous
+            </Button>
+            <span className="font-bold text-sm text-zinc-600">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="font-bold rounded-xl"
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

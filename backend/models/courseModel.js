@@ -33,35 +33,38 @@ const createCourse = async (
   return result;
 };
 
-const getAllCourses = async (userId = null, role = null) => {
-  let query = `
-    SELECT c.*, u.full_name as instructor_name 
-    FROM courses c
-    LEFT JOIN users u ON c.instructor_id = u.id
-    WHERE c.is_published = 1
-  `;
+const getAllCourses = async (userId = null, role = null, page = 1, limit = 10) => {
+  const offset = (page - 1) * limit;
+
+  let baseWhere = `WHERE c.is_published = 1`;
   let params = [];
 
   if (role === 'INSTRUCTOR' && userId) {
-    query = `
-      SELECT c.*, u.full_name as instructor_name 
-      FROM courses c
-      LEFT JOIN users u ON c.instructor_id = u.id
-      WHERE c.is_published = 1 OR c.instructor_id = ?
-    `;
+    baseWhere = `WHERE (c.is_published = 1 OR c.instructor_id = ?)`;
     params.push(userId);
   } else if (role === 'SUPER_ADMIN') {
-    query = `
-      SELECT c.*, u.full_name as instructor_name 
-      FROM courses c
-      LEFT JOIN users u ON c.instructor_id = u.id
-    `;
+    baseWhere = ``;
   }
 
-  const [rows] = await mysqlPool.execute(query, params);
+  const joinClause = `FROM courses c LEFT JOIN users u ON c.instructor_id = u.id`;
 
-  return rows;
+  // COUNT query (no LIMIT/OFFSET)
+  const countQuery = `SELECT COUNT(*) as total ${joinClause} ${baseWhere}`;
+  const [[{ total }]] = await mysqlPool.execute(countQuery, params);
+
+  // Data query with pagination
+  const dataQuery = `
+    SELECT c.*, u.full_name as instructor_name
+    ${joinClause}
+    ${baseWhere}
+    ORDER BY c.created_at DESC
+    LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+  `;
+  const [rows] = await mysqlPool.execute(dataQuery, params);
+
+  return { rows, total };
 };
+
 
 const getCourseById = async (courseId) => {
   const query = `

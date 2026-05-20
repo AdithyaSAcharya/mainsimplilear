@@ -80,6 +80,19 @@ router.post(
  *   get:
  *     summary: Get all published courses
  *     tags: [Courses]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of courses per page
  *     responses:
  *       200:
  *         description: List of courses

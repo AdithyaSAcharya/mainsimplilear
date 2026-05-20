@@ -11,6 +11,18 @@ const {
   const { checkUserEnrollment } = require("../models/enrollmentModel");
   const { redisClient } = require("../congif/redisConnection");
   
+  const bustCoursesPageCache = async () => {
+    if (!redisClient.isReady) return;
+    try {
+      const keys = await redisClient.keys('courses:page:*');
+      if (keys.length > 0) {
+        await redisClient.del(keys);
+      }
+    } catch (err) {
+      console.error('Error busting courses page cache:', err);
+    }
+  };
+
   const createCourseController = async (
     req,
     res
@@ -32,7 +44,7 @@ const {
       );
   
       if (redisClient.isReady) {
-        await redisClient.del("courses:all");
+        await bustCoursesPageCache();
         await redisClient.del(`instructor:${req.user.id}:courses`);
         await redisClient.del("admin:dashboard");
       }
@@ -58,36 +70,35 @@ const {
         const userId = req.user ? req.user.id : null;
         const role = req.user ? req.user.role : null;
 
-        // If they are a normal student or anonymous, use cache
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const cacheKey = `courses:page:${page}:limit:${limit}`;
+
+        // Use page-keyed cache only for students / anonymous
         if (redisClient.isReady && (!role || role === 'STUDENT')) {
-          const cachedCourses = await redisClient.get("courses:all");
-          if (cachedCourses) {
-            return res.status(200).json({
-              success: true,
-              courses: JSON.parse(cachedCourses),
-              source: "cache"
-            });
+          const cachedData = await redisClient.get(cacheKey);
+          if (cachedData) {
+            return res.status(200).json({ success: true, ...JSON.parse(cachedData), source: 'cache' });
           }
         }
 
-        const courses = await getAllCourses(userId, role);
+        const { rows: courses, total } = await getAllCourses(userId, role, page, limit);
+        const totalPages = Math.ceil(total / limit);
 
-        // Only cache the global published view
+        const responsePayload = {
+          courses,
+          pagination: { page, limit, total, totalPages }
+        };
+
+        // Cache page slices for students / anonymous (1 hour TTL)
         if (redisClient.isReady && (!role || role === 'STUDENT')) {
-          await redisClient.setEx("courses:all", 86400, JSON.stringify(courses)); // 24 hours TTL
+          await redisClient.setEx(cacheKey, 3600, JSON.stringify(responsePayload));
         }
 
-        return res.status(200).json({
-          success: true,
-          courses,
-        });
+        return res.status(200).json({ success: true, ...responsePayload });
       } catch (error) {
         console.log(error);
-  
-        return res.status(500).json({
-          success: false,
-          message: "Server error",
-        });
+        return res.status(500).json({ success: false, message: 'Server error' });
       }
     };
   
@@ -169,7 +180,7 @@ const {
       );
 
       if (redisClient.isReady) {
-        await redisClient.del("courses:all");
+        await bustCoursesPageCache();
         await redisClient.del(`course:${req.params.id}:details`);
         await redisClient.del(`instructor:${existingCourse.instructor_id}:courses`);
         await redisClient.del("admin:dashboard");
@@ -195,7 +206,7 @@ const {
         await deleteCourse(req.params.id);
   
         if (redisClient.isReady) {
-          await redisClient.del("courses:all");
+          await bustCoursesPageCache();
           await redisClient.del(`course:${req.params.id}:details`);
           await redisClient.del(`instructor:${req.user.id}:courses`);
           await redisClient.del("admin:dashboard");
