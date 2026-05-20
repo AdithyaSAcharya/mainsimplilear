@@ -1,0 +1,67 @@
+
+Students can explore courses, learn through videos and quizzes, track progress, and earn certificates.
+Instructors can create, manage, and publish engaging courses while interacting directly with their learners.
+Super Admins oversee the entire platform with full control over users, courses, and analytics.
+
+
+# LearnStack Role & Permissions Matrix
+
+This document outlines the three primary roles within the LearnStack platform and the specific actions they are authorized to perform.
+
+## 1. STUDENT
+*The default role assigned when a user signs up on the platform.*
+
+**Capabilities:**
+* **Course Discovery:** Can view the public course catalog, read short descriptions, and see course metadata (like the author's name).
+* **Enrollment:** Can enroll in any published course.
+* **Course Consumption:** 
+  * Can access lessons, video content, and reading materials for courses they are enrolled in.
+  * Can take quizzes associated with their enrolled courses.
+  * Can track their own progress (completed vs. pending lessons).
+* **Certification:** Automatically receives a completion certificate once 100% of the lessons and quizzes in an enrolled course are finished.
+* **Communication:** Can initiate real-time chat messages with the instructor of any enrolled course.
+
+**Restrictions:**
+* Cannot access the course creation or editing pages.
+* Cannot view the admin dashboard or provision other users.
+* Cannot view content of courses they are not enrolled in.
+
+---
+
+## 2. INSTRUCTOR
+*A specialized role manually provisioned by a Super Admin.*
+
+**Capabilities:**
+* **All Student Privileges:** Instructors can act as students (enroll in and consume other courses).
+* **Course Authoring:**
+  * Can create new courses, set thumbnails, and write descriptions.
+  * Can add, edit, or delete video lessons and text content for **their own** courses.
+  * Can build interactive quizzes and attach them to specific lessons.
+* **Course Publishing:** Can toggle their authored courses from "Draft" to "Published" so students can enroll.
+* **Analytics & Management:** 
+  * Has access to an "Instructor Panel" to track all of their authored courses.
+  * Can view the list of students actively enrolled in their courses.
+* **Communication:** Can read and reply to direct chat messages from students enrolled in their courses.
+
+**Restrictions:**
+* Cannot edit, manage, or delete courses authored by *other* instructors.
+* Cannot access the Super Admin control panel.
+* Cannot provision other instructors or view global platform metrics.
+
+---
+
+## 3. SUPER_ADMIN
+*The highest-level platform administrator. This role is typically hardcoded or assigned directly in the database.*
+
+**Capabilities:**
+* **Unrestricted Platform Access:** Can bypass enrollment locks and view the internal content (videos/lessons) of *any* course on the platform, published or draft.
+* **Global Course Management:** Can inspect, edit, or delete *any* course created by any instructor.
+* **User Provisioning:** Has exclusive rights to create/provision new Instructor accounts via the Admin Dashboard.
+* **Platform Analytics (Admin Dashboard):**
+  * Can view global platform metrics (Total Students, Total Instructors, Total Courses).
+  * Has access to the Platform Courses Registry (monitoring published vs. draft ratios).
+  * Can access the "Student Directory" to inspect individual student profiles and their enrollment status.
+  * Can access the "Instructor Directory" to see instructor profiles and their authored courses.
+
+**Restrictions:**
+* *None.* The Super Admin has full overarching control of both content moderation and user management.

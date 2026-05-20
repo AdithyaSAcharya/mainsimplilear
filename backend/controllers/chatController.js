@@ -49,6 +49,14 @@ const getOrCreateThread = async (req, res) => {
 const getThreadMessages = async (req, res) => {
     try {
         const { threadId } = req.params;
+        const userId = req.user.id;
+
+        // Mark all unread messages in this thread NOT sent by the current user as read
+        await Message.updateMany(
+            { threadId, senderId: { $ne: userId }, isRead: false },
+            { $set: { isRead: true } }
+        );
+
         const messages = await Message.find({ threadId }).sort({ createdAt: 1 });
         return res.status(200).json({ success: true, messages });
     } catch (error) {
@@ -108,12 +116,35 @@ const getUserThreads = async (req, res) => {
             return acc;
         }, {});
 
-        // Attach the other user's info to each thread
+        // Get unread message counts for each thread where the sender is not the current user
+        const unreadCounts = await Message.aggregate([
+            {
+                $match: {
+                    threadId: { $in: threads.map(t => t._id) },
+                    isRead: false,
+                    senderId: { $ne: userId }
+                }
+            },
+            {
+                $group: {
+                    _id: "$threadId",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const unreadMap = unreadCounts.reduce((acc, curr) => {
+            acc[curr._id.toString()] = curr.count;
+            return acc;
+        }, {});
+
+        // Attach the other user's info and unread count to each thread
         const enrichedThreads = threads.map(thread => {
             const otherId = role === 'STUDENT' ? thread.instructorId : thread.studentId;
             return {
                 ...thread,
-                otherUser: userMap[otherId] || { name: 'Unknown User', role: 'UNKNOWN' }
+                otherUser: userMap[otherId] || { name: 'Unknown User', role: 'UNKNOWN' },
+                unreadCount: unreadMap[thread._id.toString()] || 0
             };
         });
 

@@ -36,6 +36,7 @@ interface ChatThread {
   instructorId: number;
   lastMessageAt: string;
   otherUser: { name: string; role: string };
+  unreadCount?: number;
 }
 
 // Always reads the currently-logged-in user's ID fresh from localStorage.
@@ -86,8 +87,20 @@ export default function FloatingChat() {
   const [selectedCourse, setSelectedCourse] = useState<CourseContext | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentThreadRef = useRef<ChatThread | null>(null);
 
-  // 1. Initialize user — always re-read from localStorage on open
+  useEffect(() => {
+    currentThreadRef.current = currentThread;
+  }, [currentThread]);
+
+  // 1. Initialize user on mount and always re-read from localStorage on open
+  useEffect(() => {
+    const freshId = getActiveUserId();
+    if (freshId) {
+      setCurrentUserId(freshId);
+    }
+  }, []);
+
   useEffect(() => {
     const freshId = getActiveUserId();
 
@@ -107,9 +120,9 @@ export default function FloatingChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // 2. Initialize Socket when opened
+  // 2. Initialize Socket and fetch threads immediately if logged in
   useEffect(() => {
-    if (isOpen && !socket && currentUserId) {
+    if (!socket && currentUserId) {
       const token = localStorage.getItem("token") || "";
       const newSocket = io("http://localhost:3000", { auth: { token } });
       setSocket(newSocket);
@@ -118,14 +131,14 @@ export default function FloatingChat() {
         console.error("Socket Connection Error:", err.message);
       });
 
-      // Fetch threads list
+      // Fetch threads list immediately to show correct unread counts on load
       fetchApi("/chat/threads")
         .then(res => setThreads(res.threads || []))
         .catch(err => console.error("Error fetching threads:", err));
 
       return () => { newSocket.close(); };
     }
-  }, [isOpen, currentUserId]);
+  }, [currentUserId]);
 
   // Listen for global 'openChat' event
   useEffect(() => {
@@ -153,18 +166,37 @@ export default function FloatingChat() {
     if (!socket) return;
 
     const handleReceiveMessage = (message: Message) => {
-      // If we are looking at this thread, add it to the window
-      setMessages((prev) => {
-        // Only append if it belongs to current active thread
-        if (prev.length > 0 && prev[0].threadId === message.threadId) {
-          return [...prev, message];
-        }
-        return prev;
-      });
-      scrollToBottom();
+      const isCurrent = currentThreadRef.current?._id === message.threadId;
+      if (isCurrent) {
+        setMessages((prev) => [...prev, message]);
+        scrollToBottom();
+      }
 
-      // Update thread list last message time
-      setThreads(prev => prev.map(t => t._id === message.threadId ? { ...t, lastMessageAt: message.createdAt } : t).sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+      setThreads(prev => prev.map(t => {
+        if (t._id === message.threadId) {
+          return {
+            ...t,
+            lastMessageAt: message.createdAt,
+            unreadCount: isCurrent ? 0 : (t.unreadCount || 0) + 1
+          };
+        }
+        return t;
+      }).sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+    };
+
+    const handleNotification = (data: { threadId: string, text: string, senderId: number }) => {
+      const isCurrent = currentThreadRef.current?._id === data.threadId;
+      if (isCurrent) return;
+
+      setThreads(prev => prev.map(t => {
+        if (t._id === data.threadId) {
+          return {
+            ...t,
+            unreadCount: (t.unreadCount || 0) + 1
+          };
+        }
+        return t;
+      }));
     };
 
     const handleMessageReacted = (data: { messageId: string, reactions: Reaction[] }) => {
@@ -174,10 +206,12 @@ export default function FloatingChat() {
     };
 
     socket.on("receive_message", handleReceiveMessage);
+    socket.on("new_message_notification", handleNotification);
     socket.on("message_reacted", handleMessageReacted);
 
     return () => {
       socket.off("receive_message", handleReceiveMessage);
+      socket.off("new_message_notification", handleNotification);
       socket.off("message_reacted", handleMessageReacted);
     };
   }, [socket]);
@@ -186,6 +220,10 @@ export default function FloatingChat() {
   const openThread = async (thread: ChatThread) => {
     setCurrentThread(thread);
     setView("CHAT");
+    
+    // Clear unread count locally in list
+    setThreads(prev => prev.map(t => t._id === thread._id ? { ...t, unreadCount: 0 } : t));
+
     if (socket) socket.emit("join_thread", thread._id);
 
     try {
@@ -252,6 +290,8 @@ export default function FloatingChat() {
     }
   };
 
+  const totalUnread = threads.reduce((sum, t) => sum + (t.unreadCount || 0), 0);
+
   // If user is not logged in, don't show the chat bubble at all
   if (!currentUserId) return null;
 
@@ -262,6 +302,11 @@ export default function FloatingChat() {
         className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-xl transition-all duration-300 z-50 flex items-center justify-center"
       >
         <MessageCircle className="w-6 h-6" />
+        {totalUnread > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-md border border-white animate-pulse">
+            {totalUnread}
+          </span>
+        )}
       </button>
     );
   }
@@ -285,8 +330,13 @@ export default function FloatingChat() {
             </button>
           )}
           <div className="w-2 h-2 bg-green-400 rounded-full" />
-          <h3 className="font-semibold text-sm truncate max-w-[150px]">
+          <h3 className="font-semibold text-sm truncate max-w-[150px] flex items-center gap-1.5">
             {view === "LIST" ? "Messages" : currentThread?.otherUser.name}
+            {view === "LIST" && totalUnread > 0 && (
+              <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white/20">
+                {totalUnread}
+              </span>
+            )}
           </h3>
         </div>
         <div className="flex items-center gap-2">
@@ -316,11 +366,18 @@ export default function FloatingChat() {
                 onClick={() => openThread(thread)}
                 className="p-4 border-b border-gray-100 hover:bg-blue-50 cursor-pointer flex gap-3 items-center transition"
               >
-                <div className="bg-gray-200 text-gray-600 rounded-full p-2">
+                <div className="bg-gray-200 text-gray-600 rounded-full p-2 relative">
                   <UserCircle className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-gray-900 truncate">{thread.otherUser.name}</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-900 truncate">{thread.otherUser.name}</h4>
+                    {thread.unreadCount && thread.unreadCount > 0 ? (
+                      <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full animate-pulse shadow-sm">
+                        {thread.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="text-xs text-gray-500 truncate">
                     {thread.lastMessageAt ? format(new Date(thread.lastMessageAt), "MMM d, h:mm a") : "New conversation"}
                   </p>
