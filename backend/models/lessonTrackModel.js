@@ -1,4 +1,6 @@
 const { mysqlPool } = require("../congif/mySqlConnection");
+const Quiz = require("./quizModel");
+const QuizSubmission = require("./quizSubmissionModel");
 
 const createLessonTrack = async (userId, courseId, lessonId) => {
     const query = `
@@ -44,22 +46,70 @@ const getCourseProgress = async (userId, courseId) => {
 };
 
 const checkCourseCompletion = async (userId, courseId) => {
-    // Get total lessons for course
-    const [courseRows] = await mysqlPool.execute('SELECT lessons FROM courses WHERE id = ?', [courseId]);
+    // ── Step 1: Verify all lessons are completed ──────────────────────────────
+    const [courseRows] = await mysqlPool.execute(
+        'SELECT lessons FROM courses WHERE id = ?',
+        [courseId]
+    );
     if (courseRows.length === 0) return;
-    
-    let lessons = courseRows[0].lessons ? (typeof courseRows[0].lessons === 'string' ? JSON.parse(courseRows[0].lessons) : courseRows[0].lessons) : [];
-    const totalLessons = lessons.length;
-    if (totalLessons === 0) return;
 
-    // Get completed lessons count
-    const [trackRows] = await mysqlPool.execute('SELECT COUNT(*) as count FROM lesson_tracks WHERE user_id = ? AND course_id = ? AND status = "completed"', [userId, courseId]);
+    const rawLessons = courseRows[0].lessons;
+    const lessonIds = rawLessons
+        ? (typeof rawLessons === 'string' ? JSON.parse(rawLessons) : rawLessons)
+        : [];
+
+    const totalLessons = lessonIds.length;
+    if (totalLessons === 0) return; // No lessons → nothing to complete
+
+    const [trackRows] = await mysqlPool.execute(
+        `SELECT COUNT(*) as count FROM lesson_tracks
+         WHERE user_id = ? AND course_id = ? AND status = 'completed'`,
+        [userId, courseId]
+    );
     const completedLessons = trackRows[0].count;
 
-    // Update enrollment if all completed
-    if (completedLessons >= totalLessons) {
-        await mysqlPool.execute('UPDATE enrollments SET completion_status = "completed" WHERE user_id = ? AND course_id = ?', [userId, courseId]);
+    if (completedLessons < totalLessons) return; // Lessons not all done yet
+
+    // ── Step 2: Verify all quizzes are passed ─────────────────────────────────
+    // Fetch quiz IDs registered for this course (stored in MySQL course_quizzes)
+    const [quizRows] = await mysqlPool.execute(
+        'SELECT quiz_id FROM course_quizzes WHERE course_id = ?',
+        [courseId]
+    );
+
+    if (quizRows.length > 0) {
+        const quizIds = quizRows.map(r => r.quiz_id);
+
+        for (const quizId of quizIds) {
+            // Get the quiz details (passingMarks) from MongoDB
+            const quiz = await Quiz.findById(quizId).select('passingMarks').lean();
+            if (!quiz) continue; // Quiz deleted — skip it
+
+            const passingMarks = quiz.passingMarks || 0;
+
+            // Find the student's best submission for this quiz
+            const bestSubmission = await QuizSubmission.findOne({
+                quizId: quizId.toString(),
+                studentId: userId.toString(),
+                score: { $gte: passingMarks },
+            });
+
+            if (!bestSubmission) {
+                // This quiz hasn't been passed → course not complete yet
+                console.log(`User ${userId} has not passed quiz ${quizId} for course ${courseId}. Completion blocked.`);
+                return;
+            }
+        }
     }
+
+    // ── Step 3: All lessons done + all quizzes passed → mark as completed ─────
+    await mysqlPool.execute(
+        `UPDATE enrollments SET completion_status = 'completed'
+         WHERE user_id = ? AND course_id = ?`,
+        [userId, courseId]
+    );
+
+    console.log(`✅ User ${userId} has completed course ${courseId}`);
 };
 
 module.exports = {

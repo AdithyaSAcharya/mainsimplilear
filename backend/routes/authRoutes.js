@@ -79,7 +79,8 @@ router.post("/signup", authRateLimiter, signup);
  *       400:
  *         description: Invalid credentials
  */
-router.post("/signin", authRateLimiter, signin);
+// router.post("/signin", authRateLimiter, signin);
+router.post("/signin", signin);
 
 /**
  * @swagger

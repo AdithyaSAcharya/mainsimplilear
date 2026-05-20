@@ -18,8 +18,39 @@ const mongoose = require('mongoose');
  */
 
 /**
- * POST /api/uploads/course/:courseId/thumbnail
- * Upload a thumbnail image for a course
+ * @swagger
+ * /api/uploads/course/{courseId}/thumbnail:
+ *   post:
+ *     summary: Upload a thumbnail image for a course
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Course thumbnail updated successfully.
+ *       400:
+ *         description: No image file provided.
+ *       500:
+ *         description: Server error during upload.
  */
 router.post(
   '/course/:courseId/thumbnail',
@@ -52,8 +83,39 @@ router.post(
 );
 
 /**
- * POST /api/uploads/lesson/:lessonId/thumbnail
- * Upload a thumbnail image for a lesson
+ * @swagger
+ * /api/uploads/lesson/{lessonId}/thumbnail:
+ *   post:
+ *     summary: Upload a thumbnail image for a lesson
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: lessonId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: 60d5ec49f8c7a1001c8e4d5a
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Lesson thumbnail updated successfully.
+ *       400:
+ *         description: No image file provided or invalid lesson ID.
+ *       500:
+ *         description: Server error during upload.
  */
 router.post(
   '/lesson/:lessonId/thumbnail',
@@ -94,8 +156,39 @@ router.post(
 );
 
 /**
- * POST /api/uploads/lesson/:lessonId/video
- * Upload a lesson video to Cloudinary
+ * @swagger
+ * /api/uploads/lesson/{lessonId}/video:
+ *   post:
+ *     summary: Upload a lesson video to Cloudinary
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: lessonId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: 60d5ec49f8c7a1001c8e4d5a
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Lesson video uploaded successfully.
+ *       400:
+ *         description: No video file provided or invalid lesson ID.
+ *       500:
+ *         description: Server error during video upload.
  */
 router.post(
   '/lesson/:lessonId/video',
@@ -142,8 +235,27 @@ router.post(
 );
 
 /**
- * DELETE /api/uploads/lesson/:lessonId/video
- * Remove lesson video reference from MongoDB
+ * @swagger
+ * /api/uploads/lesson/{lessonId}/video:
+ *   delete:
+ *     summary: Remove lesson video reference from MongoDB
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: lessonId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: 60d5ec49f8c7a1001c8e4d5a
+ *     responses:
+ *       200:
+ *         description: Lesson video removed successfully.
+ *       404:
+ *         description: Lesson not found.
+ *       500:
+ *         description: Failed to remove video.
  */
 router.delete(
   '/lesson/:lessonId/video',

@@ -33,15 +33,32 @@ const createCourse = async (
   return result;
 };
 
-const getAllCourses = async () => {
-  const query = `
+const getAllCourses = async (userId = null, role = null) => {
+  let query = `
     SELECT c.*, u.full_name as instructor_name 
     FROM courses c
     LEFT JOIN users u ON c.instructor_id = u.id
     WHERE c.is_published = 1
   `;
+  let params = [];
 
-  const [rows] = await mysqlPool.execute(query);
+  if (role === 'INSTRUCTOR' && userId) {
+    query = `
+      SELECT c.*, u.full_name as instructor_name 
+      FROM courses c
+      LEFT JOIN users u ON c.instructor_id = u.id
+      WHERE c.is_published = 1 OR c.instructor_id = ?
+    `;
+    params.push(userId);
+  } else if (role === 'SUPER_ADMIN') {
+    query = `
+      SELECT c.*, u.full_name as instructor_name 
+      FROM courses c
+      LEFT JOIN users u ON c.instructor_id = u.id
+    `;
+  }
+
+  const [rows] = await mysqlPool.execute(query, params);
 
   return rows;
 };

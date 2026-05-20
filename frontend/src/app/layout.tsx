@@ -1,6 +1,7 @@
 import { Inter } from 'next/font/google';
 import { Toaster } from "@/components/ui/sonner";
 import { LayoutWrapper } from "@/components/layout-wrapper";
+import FloatingChat from "@/components/chat/FloatingChat";
 import "./globals.css";
 
 const inter = Inter({ subsets: ['latin'] });
@@ -23,6 +24,7 @@ export default function RootLayout({
         <LayoutWrapper modal={modal}>
           {children}
         </LayoutWrapper>
+        <FloatingChat />
         <Toaster />
       </body>
     </html>

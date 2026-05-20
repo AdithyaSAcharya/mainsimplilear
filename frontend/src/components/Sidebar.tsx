@@ -21,6 +21,7 @@ function SidebarContent() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
+    localStorage.removeItem('userId');
     setRole(null);
     router.push('/login');
   };

@@ -58,32 +58,54 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 w-full">
+    <div className="min-h-screen bg-gray-50/50 pb-24 w-full">
       {/* Hero Section */}
       {!isLoggedIn && (
-        <div className="bg-black w-full relative overflow-hidden border-b border-gray-800">
+        <div className="bg-gradient-to-b from-zinc-950 via-black to-zinc-900 w-full relative overflow-hidden border-b border-zinc-800">
+          {/* Decorative background blur shapes */}
+          <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-zinc-800/10 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-zinc-700/10 rounded-full blur-[140px] pointer-events-none" />
+
           <header className="absolute top-0 w-full flex justify-between items-center px-6 md:px-12 py-6 z-20">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="text-white h-7 w-7" />
-              <span className="text-xl font-bold text-white tracking-tight">LearnStack</span>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
+                <GraduationCap className="text-white h-6 w-6" />
+              </div>
+              <span className="text-xl font-black text-white tracking-tight">LearnStack</span>
             </div>
-            <div className="flex gap-4">
-              <Link href="/login"><Button variant="ghost" className="text-white hover:bg-white hover:text-black font-semibold">Log in</Button></Link>
-              <Link href="/register"><Button className="bg-white text-black hover:bg-gray-200 font-bold">Sign up</Button></Link>
+            <div className="flex gap-3">
+              <Link href="/login">
+                <Button variant="ghost" className="text-white hover:bg-white hover:text-black font-bold rounded-xl px-4 transition-all">
+                  Log in
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button className="bg-white text-black hover:bg-zinc-200 font-extrabold rounded-xl px-5 transition-all shadow-md">
+                  Sign up
+                </Button>
+              </Link>
             </div>
           </header>
-          <div className="container mx-auto px-6 pt-32 pb-24 relative z-10 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+          
+          <div className="container mx-auto px-6 pt-36 pb-28 relative z-10 text-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-zinc-800/80 border border-zinc-700 text-zinc-300 mb-6 backdrop-blur-md">
+              🚀 Welcome to LearnStack 2.0
+            </span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight leading-none">
               Elevate Your Career <br className="hidden md:block" /> with LearnStack
             </h1>
-            <p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto font-medium mb-8 leading-relaxed">
+            <p className="text-base md:text-xl text-zinc-400 max-w-2xl mx-auto font-medium mb-10 leading-relaxed">
               Master the most in-demand skills through world-class courses designed by industry experts.
             </p>
-            <div className="flex justify-center gap-4">
-              <Button size="lg" className="bg-white hover:bg-gray-200 text-black font-semibold px-6 py-4" onClick={() => {
-                document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}>
-                Browse Courses <ArrowRight className="ml-2 h-4 w-4" />
+            <div className="flex justify-center">
+              <Button 
+                size="lg" 
+                className="bg-white hover:bg-zinc-200 text-black font-extrabold rounded-xl px-8 py-6 transition-all hover:scale-[1.02] active:scale-100 shadow-xl shadow-white/5 flex items-center gap-2" 
+                onClick={() => {
+                  document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                Browse Courses <ArrowRight className="h-5 w-5" />
               </Button>
             </div>
           </div>
@@ -92,69 +114,120 @@ export default function Home() {
 
       {/* Courses Section */}
       <div id="courses-section" className={`container mx-auto px-4 md:px-8 max-w-5xl ${isLoggedIn ? 'pt-16' : 'mt-16'}`}>
-        <div className="mb-8 flex items-center gap-2">
-          <BookOpen className="text-black h-6 w-6" />
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Course Catalog</h2>
+        <div className="mb-10 flex items-center justify-between border-b pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-black text-white rounded-xl">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Course Catalog</h2>
+          </div>
+          <span className="text-sm font-semibold text-zinc-500">
+            Showing {courses.length} course{courses.length !== 1 ? 's' : ''}
+          </span>
         </div>
 
         <div className="flex flex-col gap-6">
           {courses.length === 0 && (
-            <div className="p-20 text-center bg-white rounded-2xl border-2 border-dashed border-gray-300 shadow-sm">
-              <PlayCircle className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-              <p className="text-2xl font-bold text-gray-700 mb-2">No courses available yet.</p>
-              <p className="text-gray-500">Please check back soon.</p>
+            <div className="p-20 text-center bg-white rounded-2xl border border-zinc-150 shadow-sm">
+              <PlayCircle className="mx-auto h-16 w-16 text-zinc-300 mb-4" />
+              <p className="text-2xl font-extrabold text-zinc-700 mb-2">No courses available yet.</p>
+              <p className="text-zinc-500">Please check back soon.</p>
             </div>
           )}
           
           {courses.map(c => {
             const isEnrolled = enrolledCourseIds.includes(Number(c.id));
             const lessonsCount = c.lessons ? (typeof c.lessons === 'string' ? JSON.parse(c.lessons).length : c.lessons.length) : 0;
-            
             return (
-              <Card key={c.id} className="border shadow-sm hover:shadow-md transition-all duration-200 rounded-xl overflow-hidden flex flex-col md:flex-row bg-white w-full">
-                {/* Thumbnail */}
-                <div className="md:w-48 h-40 md:h-auto flex-shrink-0 bg-gray-100 overflow-hidden">
+              <div 
+                key={c.id} 
+                className="group relative bg-white border border-gray-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row overflow-hidden w-full md:h-56"
+              >
+                {/* Thumbnail / Image Container */}
+                <div className="md:w-56 h-48 md:h-full flex-shrink-0 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-black">
                   {c.thumbnail ? (
-                    <img src={c.thumbnail} alt={c.title} className="w-full h-full object-cover" />
+                    <img 
+                      src={c.thumbnail} 
+                      alt={c.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" 
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <BookOpen size={40} />
+                    <div className="w-full h-full flex flex-col items-center justify-center text-white/40 gap-2 p-6">
+                      <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/15 shadow-inner">
+                        <BookOpen size={28} className="text-white/70" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/40">LMS Course</span>
                     </div>
                   )}
+                  {/* Floating Lesson Badge */}
+                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 shadow-sm flex items-center gap-1.5">
+                    <BookOpen size={13} className="text-black" />
+                    <span className="text-[11px] font-extrabold text-black">{lessonsCount} Lesson{lessonsCount !== 1 ? 's' : ''}</span>
+                  </div>
                 </div>
 
-                <CardContent className="flex-1 p-6 md:p-8 flex flex-col justify-center">
-                  <div className="mb-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{c.title}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">{c.short_description}</p>
+                {/* Course Info */}
+                <div className="flex-1 p-6 md:p-8 flex flex-col justify-between overflow-hidden md:h-full">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-zinc-100 text-zinc-800 px-2.5 py-1 rounded-md">
+                        Self-Paced
+                      </span>
+                      {isEnrolled && (
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200/50 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Enrolled
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-black text-zinc-900 mb-1.5 leading-snug group-hover:text-black transition-colors line-clamp-1">
+                      {c.title}
+                    </h3>
+                    <p className="text-zinc-500 text-sm leading-relaxed line-clamp-2">
+                      {c.short_description}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-3 mt-auto pt-4 border-t border-gray-100">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-black font-bold uppercase text-sm">
+
+                  {/* Instructor detail */}
+                  <div className="flex items-center gap-3 mt-4 pt-3 border-t border-zinc-100">
+                    <div className="w-9 h-9 rounded-full bg-zinc-900 text-white flex items-center justify-center font-extrabold uppercase text-xs shadow-md border-2 border-white">
                       {(c.instructor_name || 'I')[0]}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{c.instructor_name || `Instructor #${c.instructor_id}`}</p>
-                      <p className="text-xs text-gray-500">{lessonsCount} Lesson{lessonsCount !== 1 ? 's' : ''}</p>
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider leading-none mb-1">Instructor</p>
+                      <p className="text-sm font-extrabold text-zinc-850 leading-none">
+                        {c.instructor_name || `Instructor #${c.instructor_id}`}
+                      </p>
                     </div>
                   </div>
-                </CardContent>
+                </div>
                 
-                <div className="bg-gray-50/50 p-6 md:w-56 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col justify-center items-center gap-4 shrink-0">
+                {/* Actions Sidebar */}
+                <div className="bg-zinc-50/50 p-6 md:w-60 border-t md:border-t-0 md:border-l border-zinc-100 flex flex-col justify-center items-center gap-3 shrink-0 md:h-full">
                   {role === 'INSTRUCTOR' || role === 'SUPER_ADMIN' ? (
-                    <Button className="w-full py-4 text-sm font-semibold bg-black hover:bg-gray-800 text-white shadow-sm" onClick={() => router.push(`/courses/${c.id}`)}>
-                      View Course
+                    <Button 
+                      className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100" 
+                      onClick={() => router.push(`/courses/${c.id}`)}
+                    >
+                      Manage Course
                     </Button>
                   ) : isEnrolled ? (
-                    <Button className="w-full py-4 text-sm font-semibold bg-green-50 text-green-700 hover:bg-green-100 border border-green-200" onClick={() => router.push(`/courses/${c.id}`)}>
-                      <PlayCircle className="mr-2 h-4 w-4" /> Continue
+                    <Button 
+                      className="w-full py-6 rounded-xl text-sm font-bold bg-green-600 hover:bg-green-750 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-2" 
+                      onClick={() => router.push(`/courses/${c.id}`)}
+                    >
+                      <PlayCircle className="h-5 w-5" /> Continue Study
                     </Button>
                   ) : (
-                    <Button className="w-full py-4 text-sm font-semibold bg-black hover:bg-gray-800 text-white shadow-sm" onClick={() => handleEnroll(c.id)}>
-                      Enroll Now
+                    <Button 
+                      className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-1.5" 
+                      onClick={() => handleEnroll(c.id)}
+                    >
+                      Enroll Now <ArrowRight className="h-4 w-4" />
                     </Button>
                   )}
+                  <span className="text-[9px] text-zinc-400 font-extrabold uppercase tracking-widest mt-1">Full Lifetime Access</span>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>

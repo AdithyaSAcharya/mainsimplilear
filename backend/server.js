@@ -1,8 +1,8 @@
 require("dotenv").config();
 
 const express = require("express");
-
-const cors = require("cors")
+const http = require("http");
+const cors = require("cors");
 
 const connectMongo = require("./congif/mongoConnection");
 
@@ -16,9 +16,10 @@ const {
 
 const swaggerDocs = require("./congif/swagger");
 
-const app = new express()
+const app = express();
+const server = http.createServer(app);
 
-app.use(express.json())
+app.use(express.json());
 
 swaggerDocs(app);
 
@@ -37,6 +38,8 @@ const lessonTrackRoutes = require("./routes/lessonTrackRoutes");
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const quizRoutes = require('./routes/quizRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const certificateRoutes = require('./routes/certificateRoutes');
 
 app.use(cors())
 
@@ -55,9 +58,13 @@ app.use("/api/lesson-tracks", lessonTrackRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.use("/api/uploads", uploadRoutes);
-
 app.use("/api/quizzes", quizRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/certificates", certificateRoutes);
 
-app.listen(3000, () => {
-  console.log("app is running on port 3000")
-})
+const initializeSocket = require("./socket/socketHandler");
+initializeSocket(server);
+
+server.listen(3000, () => {
+  console.log("Server is running on port 3000 with WebSockets enabled");
+});

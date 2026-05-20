@@ -6,6 +6,8 @@ const authMiddleware = require(
   "../middleware/authMiddleware"
 );
 
+const optionalAuthMiddleware = require("../middleware/optionalAuthMiddleware");
+
 const instructorCourseMiddleware =
   require(
     "../middleware/instructorCourseMiddleware"
@@ -86,6 +88,7 @@ router.post(
  */
 router.get(
   "/",
+  optionalAuthMiddleware,
   getAllCoursesController
 );
 
@@ -108,7 +111,6 @@ router.get(
  *       500:
  *         description: Server error
  */
-const optionalAuthMiddleware = require("../middleware/optionalAuthMiddleware");
 
 router.get(
   "/:id",

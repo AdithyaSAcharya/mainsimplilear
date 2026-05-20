@@ -100,22 +100,38 @@ function DashboardContent() {
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="text-black h-5 w-5"/> My Enrollments</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {enrollments.map(en => (
-              <Card key={en.id} className="shadow-sm hover:shadow-md transition-shadow border border-gray-200 rounded-xl overflow-hidden flex flex-col bg-white">
-                <CardHeader className="bg-white border-b px-5 py-4 flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <CardTitle className="text-lg font-bold leading-tight">{en.course_title}</CardTitle>
+              <div 
+                key={en.id} 
+                className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
+              >
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-extrabold uppercase tracking-wider ${en.completion_status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200/50' : 'bg-zinc-100 text-zinc-700'}`}>
+                        {en.completion_status === 'completed' ? (
+                          <><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Completed</>
+                        ) : (
+                          <><span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-pulse"></span> In Progress</>
+                        )}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black text-zinc-900 group-hover:text-black transition-colors mb-2 leading-snug">
+                      {en.course_title}
+                    </h3>
+                    <p className="text-zinc-500 text-xs leading-relaxed line-clamp-3">
+                      {en.course_short_description}
+                    </p>
                   </div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${en.completion_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-black'}`}>
-                    {en.completion_status === 'completed' ? 'Completed' : 'In Progress'}
-                  </span>
-                </CardHeader>
-                <CardContent className="bg-gray-50 px-6 py-5 flex flex-col justify-between">
-                  <p className="text-gray-600 text-sm mb-6 line-clamp-3">{en.course_short_description}</p>
+                </div>
+
+                <div className="bg-zinc-50/50 p-5 border-t border-zinc-100 flex flex-col gap-2">
                   <Link href={`/courses/${en.course_id}`} className="w-full">
-                    <Button className="w-full shadow font-semibold bg-black hover:bg-gray-800 text-white">Go to Course</Button>
+                    <Button className="w-full py-5 rounded-xl font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm transition-all hover:scale-[1.02] active:scale-100 flex items-center justify-center gap-2">
+                      <PlayCircle size={16} /> Continue Study
+                    </Button>
                   </Link>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
             {enrollments.length === 0 && (
               <div className="col-span-full p-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
@@ -140,38 +156,43 @@ function DashboardContent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {instructorCourses.map(c => (
-              <Card key={c.id} className="shadow-sm border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow flex flex-col bg-white">
+              <div 
+                key={c.id} 
+                className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
+              >
                 {/* Thumbnail */}
-                <div className="w-full h-36 bg-gray-100 overflow-hidden flex-shrink-0">
+                <div className="w-full h-36 bg-gradient-to-br from-zinc-900 to-black overflow-hidden flex-shrink-0 relative">
                   {c.thumbnail ? (
-                    <img src={c.thumbnail} alt={c.title} className="w-full h-full object-cover" />
+                    <img src={c.thumbnail} alt={c.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <BookOpen size={36} />
+                    <div className="w-full h-full flex items-center justify-center text-white/30">
+                      <BookOpen size={32} />
                     </div>
                   )}
-                </div>
-                <CardHeader className="bg-white border-b px-6 py-5 flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-black transition-colors">{c.title}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.is_published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                  {/* Status Badge */}
+                  <div className="absolute top-3 left-3">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${c.is_published ? 'bg-green-500 text-white shadow-sm' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'}`}>
                       {c.is_published ? 'Published' : 'Draft'}
                     </span>
                   </div>
-                </CardHeader>
-                <CardContent className="bg-gray-50 px-5 py-4">
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">{c.short_description}</p>
-                  <div className="flex flex-wrap gap-2">
+                </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div className="mb-4">
+                    <h3 className="text-base font-black text-zinc-900 group-hover:text-black transition-colors line-clamp-1 mb-1.5">{c.title}</h3>
+                    <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">{c.short_description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-3 border-t border-zinc-100">
                     <Link href={`/courses/${c.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full font-semibold border-gray-300">Manage</Button>
+                      <Button variant="outline" size="sm" className="w-full font-bold border-zinc-350 rounded-lg py-4 hover:bg-zinc-50">Manage</Button>
                     </Link>
                     {!c.is_published && (
-                      <Button onClick={() => publishCourse(c.id)} size="sm" className="flex-1 bg-black hover:bg-gray-800 text-white">Publish</Button>
+                      <Button onClick={() => publishCourse(c.id)} size="sm" className="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-lg py-4">Publish</Button>
                     )}
-                    <Button onClick={() => handleDeleteCourse(c.id)} size="sm" variant="destructive" className="px-3 bg-red-100 hover:bg-red-200 text-red-600 shadow-none border-0 font-bold">Delete</Button>
+                    <Button onClick={() => handleDeleteCourse(c.id)} size="sm" variant="destructive" className="px-3 bg-red-50 hover:bg-red-100 text-red-650 rounded-lg font-bold border-0 shadow-none">Delete</Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -199,28 +220,30 @@ function DashboardContent() {
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><BookOpen className="text-black h-5 w-5"/> Platform Courses Registry</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {adminData.courses.map((c: any) => (
-                    <Card key={c.id} className="shadow-sm border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
-                      <CardHeader className="bg-white border-b px-6 py-5">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg font-bold leading-tight">{c.title}</CardTitle>
-                        </div>
-                        <div className="mt-2 flex items-center gap-2">
-                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${c.is_published === 1 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                             {c.is_published === 1 ? 'Published' : 'Draft'}
-                           </span>
-                           <span className="text-xs text-gray-500 font-medium">ID: #{c.id}</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="bg-gray-50 px-6 py-5">
+                    <div 
+                      key={c.id} 
+                      className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
+                    >
+                      <div className="p-6 flex-1 flex flex-col justify-between">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900">{c.title}</h3>
-                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{c.short_description}</p>
+                          <div className="flex justify-between items-start gap-2 mb-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${c.is_published === 1 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {c.is_published === 1 ? 'Published' : 'Draft'}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wide">ID: #{c.id}</span>
+                          </div>
+                          <h3 className="text-lg font-black text-zinc-900 group-hover:text-black transition-colors mb-2 leading-snug line-clamp-1">{c.title}</h3>
+                          <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2">{c.short_description}</p>
                         </div>
+                      </div>
+                      <div className="bg-zinc-50/50 p-5 border-t border-zinc-100">
                         <Link href={`/courses/${c.id}`}>
-                          <Button variant="outline" className="w-full border-gray-300 shadow-sm bg-white hover:bg-gray-50 mt-4">Inspect Contents</Button>
+                          <Button variant="outline" className="w-full border-zinc-300 font-bold bg-white hover:bg-zinc-50 rounded-xl py-5 transition-all">
+                            Inspect Contents
+                          </Button>
                         </Link>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                 ))}
               </div>
             </div>

@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchApi, uploadFile } from '@/lib/api';
+import { fetchApi, uploadFile, downloadFile } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, CheckCircle2, PlayCircle, LockIcon as LucideLockIcon, Users, Edit, Trash2, ImagePlus, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, PlayCircle, LockIcon as LucideLockIcon, Users, Edit, Trash2, ImagePlus, X, MessageCircle, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,23 +17,51 @@ export default function CourseDetails() {
   const { id } = useParams();
   const [course, setCourse] = useState<any>(null);
   const [role, setRole] = useState<string>('');
-  
+
   const [lessonProgress, setLessonProgress] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
-  
+
+  const [isCertLoading, setIsCertLoading] = useState(false);
   const [isEditingCourse, setIsEditingCourse] = useState(false);
   const [editCourseData, setEditCourseData] = useState({ title: '', short_description: '' });
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
+  const loadProgress = () => {
+    fetchApi('/enrollments/completion-status', {
+      method: 'POST',
+      body: JSON.stringify({ course_id: Number(id) })
+    })
+      .then(res => {
+        if (res && res.lessons) {
+          setLessonProgress(
+            res.lessons.map((l: any) => ({
+              lesson_id: l.lessonId,
+              status: l.isCompleted ? 'completed' : (l.trackStatus === 'completed' ? 'in_progress' : l.trackStatus),
+              trackStatus: l.trackStatus,
+              hasQuiz: l.hasQuiz,
+              allQuizzesPassed: l.allQuizzesPassed,
+              isCompleted: l.isCompleted
+            }))
+          );
+        }
+      })
+      .catch(console.error);
+  };
+
+  if (lessonProgress.length > 0) {
+    console.log(lessonProgress[0].status);
+  }
+  console.log(course);
+
   useEffect(() => {
     const currentRole = (localStorage.getItem('role') || 'STUDENT').toUpperCase();
     setRole(currentRole);
     loadCourse();
     if (currentRole === 'STUDENT') {
-      fetchApi(`/lesson-tracks/course/${id}/progress`).then(res => setLessonProgress(res.progress)).catch(console.error);
+      loadProgress();
     }
     if (currentRole === 'INSTRUCTOR' || currentRole === 'SUPER_ADMIN') {
       fetchApi(`/enrollments/course/${id}`).then(res => setEnrollments(res.enrollments || [])).catch(console.error);
@@ -69,24 +97,40 @@ export default function CourseDetails() {
     }
   };
 
-  const toggleLessonStatus = async (lessonId: string, currentStatus: string) => {
+  const toggleLessonStatus = async (lessonId: string, currentTrackStatus: string) => {
     try {
-      const nextStatus = currentStatus === 'completed' ? 'not_started' : 'completed';
+      const nextStatus = currentTrackStatus === 'completed' ? 'not_started' : 'completed';
       await fetchApi(`/lesson-tracks/${id}/${lessonId}/status`, {
         method: 'PUT',
         body: JSON.stringify({ status: nextStatus })
       });
-      // update local state
-      setLessonProgress(prev => {
-        const exists = prev.find(p => p.lesson_id === lessonId);
-        if (exists) {
-          return prev.map(p => p.lesson_id === lessonId ? { ...p, status: nextStatus } : p);
+
+      // Reload server-verified progress
+      loadProgress();
+
+      if (nextStatus === 'completed') {
+        const prog = lessonProgress.find(p => p.lesson_id === lessonId);
+        if (prog && prog.hasQuiz && !prog.allQuizzesPassed) {
+          toast.info('Lesson marked as read, but quizzes are still pending!');
+        } else {
+          toast.success('Lesson marked as completed!');
         }
-        return [...prev, { lesson_id: lessonId, status: nextStatus }];
-      });
-      if (nextStatus === 'completed') toast.success('Lesson marked as completed!');
+      } else {
+        toast.success('Lesson marked as incomplete.');
+      }
     } catch (e: any) {
       toast.error(e.message);
+    }
+  };
+
+  const handleDownloadCertificate = async () => {
+    setIsCertLoading(true);
+    try {
+      await downloadFile(`/certificates/${id}`, `Certificate_${course?.title || 'Course'}.pdf`);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not generate certificate. Please ensure you have completed all lessons and quizzes.');
+    } finally {
+      setIsCertLoading(false);
     }
   };
 
@@ -115,6 +159,7 @@ export default function CourseDetails() {
   const completedLessons = lessonProgress.filter(p => p.status === 'completed').length;
   const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
+
   if (!course) return <div className="p-8 flex justify-center items-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div></div>;
 
   if (selectedLesson) {
@@ -142,41 +187,76 @@ export default function CourseDetails() {
               <CardTitle className="text-2xl font-bold text-gray-900 tracking-tight">{selectedLesson.title}</CardTitle>
               <p className="text-gray-600 mt-2 text-base leading-relaxed max-w-3xl">{selectedLesson.description}</p>
             </div>
-            {role === 'STUDENT' && isEnrolled && (
-              <Button 
-                size="lg"
-                className={`flex-shrink-0 transition-all shadow-md ${progressStatus === 'completed' ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-black hover:bg-gray-800 text-white'}`}
-                onClick={() => toggleLessonStatus(selectedLesson._id, progressStatus)}
-              >
-                {progressStatus === 'completed' ? <><CheckCircle2 className="mr-2" /> Completed</> : 'Mark Complete'}
-              </Button>
-            )}
+            {role === 'STUDENT' && isEnrolled && (() => {
+              const prog = lessonProgress.find(p => p.lesson_id === selectedLesson._id);
+              const currentTrackStatus = prog?.trackStatus || 'not_started';
+              const isFullyCompleted = prog?.isCompleted || false;
+              const hasQuiz = prog?.hasQuiz || false;
+              const allQuizzesPassed = prog?.allQuizzesPassed || false;
+
+              if (isFullyCompleted) {
+                return (
+                  <Button
+                    size="lg"
+                    className="flex-shrink-0 transition-all shadow-md bg-green-500 hover:bg-green-600 text-white"
+                    onClick={() => toggleLessonStatus(selectedLesson._id, currentTrackStatus)}
+                  >
+                    <CheckCircle2 className="mr-2" /> Completed
+                  </Button>
+                );
+              } else if (currentTrackStatus === 'completed' && hasQuiz && !allQuizzesPassed) {
+                return (
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <span className="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm">
+                      ⚠️ Quizzes Pending
+                    </span>
+                    <Button
+                      size="lg"
+                      className="flex-shrink-0 transition-all shadow-md bg-amber-500 hover:bg-amber-600 text-white"
+                      onClick={() => toggleLessonStatus(selectedLesson._id, currentTrackStatus)}
+                    >
+                      Mark Incomplete
+                    </Button>
+                  </div>
+                );
+              } else {
+                return (
+                  <Button
+                    size="lg"
+                    className="flex-shrink-0 transition-all shadow-md bg-black hover:bg-gray-800 text-white"
+                    onClick={() => toggleLessonStatus(selectedLesson._id, currentTrackStatus)}
+                  >
+                    Mark Complete
+                  </Button>
+                );
+              }
+            })()}
           </CardHeader>
           <CardContent className="p-8 md:p-12 min-h-[400px]">
-             {(isEnrolled || role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') && selectedLesson.videoUrl && (
-               <LessonVideoPlayer
-                 videoUrl={selectedLesson.videoUrl}
-                 title={selectedLesson.title}
-               />
-             )}
-             {isEnrolled && selectedLesson.content ? (
-               <div
-                 className="lesson-content prose max-w-none prose-lg text-gray-800"
-                 dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
-               />
-             ) : (
-               <div className="py-20 px-8 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-300">
-                 <LockIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                 <h3 className="text-xl font-bold text-gray-900 mb-2">Content Locked</h3>
-                 <p className="text-lg text-gray-500 font-medium">Please enroll in this course to view the full lesson content.</p>
-               </div>
-             )}
-             <LessonQuizzes
-               courseId={id as string}
-               lessonId={selectedLesson._id}
-               role={role}
-               isEnrolled={isEnrolled}
-             />
+            {(isEnrolled || role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') && selectedLesson.videoUrl && (
+              <LessonVideoPlayer
+                videoUrl={selectedLesson.videoUrl}
+                title={selectedLesson.title}
+              />
+            )}
+            {isEnrolled && selectedLesson.content ? (
+              <div
+                className="lesson-content prose max-w-none prose-lg text-gray-800"
+                dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
+              />
+            ) : (
+              <div className="py-20 px-8 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-300">
+                <LockIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Content Locked</h3>
+                <p className="text-lg text-gray-500 font-medium">Please enroll in this course to view the full lesson content.</p>
+              </div>
+            )}
+            <LessonQuizzes
+              courseId={id as string}
+              lessonId={selectedLesson._id}
+              role={role}
+              isEnrolled={isEnrolled}
+            />
           </CardContent>
         </Card>
       </div>
@@ -205,21 +285,55 @@ export default function CourseDetails() {
             </div>
             <p className="text-base text-gray-600 mb-4 max-w-3xl leading-relaxed">{course.short_description}</p>
             {course.instructor_name && (
-              <p className="text-sm font-semibold text-black bg-gray-100 border border-gray-200 inline-block px-4 py-1.5 rounded-full shadow-sm">
-                Instructor: {course.instructor_name}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm font-semibold text-black bg-gray-100 border border-gray-200 inline-block px-4 py-1.5 rounded-full shadow-sm">
+                  Instructor: {course.instructor_name}
+                </p>
+                {role === 'STUDENT' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 rounded-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openChat', { detail: { otherUserId: course.instructor_id } }));
+                    }}
+                  >
+                    <MessageCircle size={16} /> Message
+                  </Button>
+                )}
+              </div>
             )}
           </div>
           {role === 'STUDENT' && (
-            <div className="w-full md:w-80 bg-gray-50 p-5 rounded-xl border shadow-inner">
-              <div className="flex justify-between items-center text-sm font-bold mb-3">
-                <span className="text-gray-700 uppercase tracking-wider">Course Progress</span>
-                <span className="text-black text-lg">{percentage}%</span>
+            <div className="w-full md:w-80 flex flex-col gap-3">
+              <div className="bg-gray-50 p-5 rounded-xl border shadow-inner">
+                <div className="flex justify-between items-center text-sm font-bold mb-3">
+                  <span className="text-gray-700 uppercase tracking-wider">Course Progress</span>
+                  <span className="text-black text-lg">{percentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 mb-2 shadow-inner overflow-hidden">
+                  <div className="bg-black h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${percentage}%` }}></div>
+                </div>
+                <p className="text-sm text-gray-500 text-right font-medium">{completedLessons} of {totalLessons} lessons completed</p>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3 mb-2 shadow-inner overflow-hidden">
-                <div className="bg-black h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${percentage}%` }}></div>
-              </div>
-              <p className="text-sm text-gray-500 text-right font-medium">{completedLessons} of {totalLessons} lessons completed</p>
+              {percentage === 100 && totalLessons > 0 && (
+                <button
+                  id="download-certificate-btn"
+                  onClick={handleDownloadCertificate}
+                  disabled={isCertLoading}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 shadow-lg shadow-amber-200 transition-all duration-200 hover:scale-[1.02] active:scale-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isCertLoading ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                  ) : (
+                    <Award size={20} />
+                  )}
+                  {isCertLoading ? 'Generating...' : '🎓 Get Your Certificate'}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -246,13 +360,18 @@ export default function CourseDetails() {
           </div>
           <div className="space-y-4">
             {course.lessons?.map((l: any, idx: number) => {
-              const progress = lessonProgress.find(p => p.lesson_id === l._id)?.status || 'not_started';
-              
+              const prog = lessonProgress.find(p => p.lesson_id === l._id);
+              const progress = prog?.status || 'not_started';
+              const trackStatus = prog?.trackStatus || 'not_started';
+              const hasQuiz = prog?.hasQuiz || false;
+              const allQuizzesPassed = prog?.allQuizzesPassed || false;
+              const isCompleted = prog?.isCompleted || false;
+
               return (
-                <div 
-                  key={l._id} 
+                <div
+                  key={l._id}
                   onClick={() => openLesson(l)}
-                  className={`group bg-white p-6 rounded-xl border shadow-sm cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${progress === 'completed' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-gray-900'}`}
+                  className={`group bg-white p-6 rounded-xl border shadow-sm cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${isCompleted ? 'border-l-4 border-l-green-500' : (trackStatus === 'completed' ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-gray-900')}`}
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-start gap-4">
@@ -262,12 +381,19 @@ export default function CourseDetails() {
                         </div>
                       )}
                       {!l.thumbnail && (
-                        <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${progress === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-black'}`}>
+                        <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${isCompleted ? 'bg-green-100 text-green-700' : (trackStatus === 'completed' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-black')}`}>
                           {idx + 1}
                         </div>
                       )}
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-black transition-colors">{l.title}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-black transition-colors flex items-center gap-2">
+                          {l.title}
+                          {trackStatus === 'completed' && hasQuiz && !allQuizzesPassed && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">
+                              Quizzes Pending
+                            </span>
+                          )}
+                        </h3>
                         <p className="text-sm text-gray-500 mt-1 line-clamp-2">{l.description}</p>
                         {l.videoUrl && (
                           <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
@@ -287,8 +413,14 @@ export default function CourseDetails() {
                           <Trash2 size={18} />
                         </Button>
                       </div>
-                    ) : role === 'STUDENT' && progress === 'completed' && (
-                      <CheckCircle2 size={24} className="text-green-500 flex-shrink-0 drop-shadow-sm" />
+                    ) : role === 'STUDENT' && (
+                      isCompleted ? (
+                        <CheckCircle2 size={24} className="text-green-500 flex-shrink-0 drop-shadow-sm" />
+                      ) : (trackStatus === 'completed' && hasQuiz && !allQuizzesPassed) ? (
+                        <span className="text-amber-500 font-medium text-xs flex items-center gap-1">
+                          ⚠️ Pending Quiz
+                        </span>
+                      ) : null
                     )}
                   </div>
                 </div>
@@ -317,9 +449,23 @@ export default function CourseDetails() {
                       <p className="font-semibold text-gray-900">{en.full_name}</p>
                       <p className="text-sm text-gray-500">{en.email}</p>
                     </div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${en.completion_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-black'}`}>
-                      {en.completion_status === 'completed' ? 'Completed' : 'In Progress'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {(role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('openChat', { detail: { otherUserId: en.user_id } }));
+                          }}
+                        >
+                          <MessageCircle size={16} className="mr-1" /> Message
+                        </Button>
+                      )}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${en.completion_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-black'}`}>
+                        {en.completion_status === 'completed' ? 'Completed' : 'In Progress'}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -343,7 +489,7 @@ export default function CourseDetails() {
               <Label>Course Title</Label>
               <Input
                 value={editCourseData.title}
-                onChange={(e) => setEditCourseData({...editCourseData, title: e.target.value})}
+                onChange={(e) => setEditCourseData({ ...editCourseData, title: e.target.value })}
                 required
               />
             </div>
@@ -352,7 +498,7 @@ export default function CourseDetails() {
               <textarea
                 className="w-full min-h-[100px] border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
                 value={editCourseData.short_description}
-                onChange={(e) => setEditCourseData({...editCourseData, short_description: e.target.value})}
+                onChange={(e) => setEditCourseData({ ...editCourseData, short_description: e.target.value })}
                 required
               />
             </div>

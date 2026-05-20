@@ -33,6 +33,8 @@ const {
   
       if (redisClient.isReady) {
         await redisClient.del("courses:all");
+        await redisClient.del(`instructor:${req.user.id}:courses`);
+        await redisClient.del("admin:dashboard");
       }
 
       return res.status(201).json({
@@ -53,7 +55,11 @@ const {
   const getAllCoursesController =
     async (req, res) => {
       try {
-        if (redisClient.isReady) {
+        const userId = req.user ? req.user.id : null;
+        const role = req.user ? req.user.role : null;
+
+        // If they are a normal student or anonymous, use cache
+        if (redisClient.isReady && (!role || role === 'STUDENT')) {
           const cachedCourses = await redisClient.get("courses:all");
           if (cachedCourses) {
             return res.status(200).json({
@@ -64,10 +70,10 @@ const {
           }
         }
 
-        const courses =
-          await getAllCourses();
+        const courses = await getAllCourses(userId, role);
 
-        if (redisClient.isReady) {
+        // Only cache the global published view
+        if (redisClient.isReady && (!role || role === 'STUDENT')) {
           await redisClient.setEx("courses:all", 86400, JSON.stringify(courses)); // 24 hours TTL
         }
 
@@ -165,6 +171,8 @@ const {
       if (redisClient.isReady) {
         await redisClient.del("courses:all");
         await redisClient.del(`course:${req.params.id}:details`);
+        await redisClient.del(`instructor:${existingCourse.instructor_id}:courses`);
+        await redisClient.del("admin:dashboard");
       }
 
       return res.status(200).json({
@@ -189,6 +197,8 @@ const {
         if (redisClient.isReady) {
           await redisClient.del("courses:all");
           await redisClient.del(`course:${req.params.id}:details`);
+          await redisClient.del(`instructor:${req.user.id}:courses`);
+          await redisClient.del("admin:dashboard");
         }
 
         return res.status(200).json({

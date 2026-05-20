@@ -117,4 +117,42 @@ router.get('/course/:courseId', authMiddleware, enrollmentController.getCourseEn
  */
 router.put('/:enrollmentId/status', authMiddleware, enrollmentController.updateEnrollmentStatusController);
 
+/**
+ * @swagger
+ * /api/enrollments/completion-status:
+ *   post:
+ *     summary: Get course completion status for a student including all lessons and quizzes
+ *     tags: [Enrollments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - course_id
+ *             properties:
+ *               course_id:
+ *                 type: integer
+ *                 example: 1
+ *               student_id:
+ *                 type: integer
+ *                 example: 2
+ *               enrollment_id:
+ *                 type: integer
+ *                 example: 3
+ *     responses:
+ *       200:
+ *         description: Course completion status checked and returned successfully
+ *       400:
+ *         description: Missing or invalid parameters
+ *       404:
+ *         description: Enrollment, course, or student not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/completion-status', authMiddleware, enrollmentController.isTheCourseComplete);
+
 module.exports = router;
