@@ -100,6 +100,14 @@ const submitQuizController =
                     }
                 );
 
+            // Trigger checkCourseCompletion because passing this quiz might complete the course!
+            try {
+                const { checkCourseCompletion } = require("../models/lessonTrackModel");
+                await checkCourseCompletion(req.user.id, quiz.courseId);
+            } catch (completionErr) {
+                console.error("Error triggering course completion on quiz submit:", completionErr);
+            }
+
             return res.json({
                 success: true,
                 message:

@@ -46,6 +46,28 @@ const getCourseProgress = async (userId, courseId) => {
 };
 
 const checkCourseCompletion = async (userId, courseId) => {
+    const markAsIncomplete = async (uId, cId) => {
+        const [result] = await mysqlPool.execute(
+            `UPDATE enrollments SET completion_status = 'enrolled'
+             WHERE user_id = ? AND course_id = ? AND completion_status = 'completed'`,
+            [uId, cId]
+        );
+        if (result.affectedRows > 0) {
+            console.log(`⚠️ User ${uId} has been demoted to 'enrolled' (incomplete) for course ${cId}`);
+            try {
+                const { redisClient } = require("../congif/redisConnection");
+                if (redisClient.isReady) {
+                    await redisClient.del(`course:${cId}:enrollments`);
+                    await redisClient.del(`user:${uId}:enrollments`);
+                    await redisClient.del(`user:${uId}:course:${cId}:progress`);
+                    await redisClient.del(`admin:dashboard`);
+                }
+            } catch (cacheErr) {
+                console.error("Cache invalidation failed in markAsIncomplete:", cacheErr);
+            }
+        }
+    };
+
     // ── Step 1: Verify all lessons are completed ──────────────────────────────
     const [courseRows] = await mysqlPool.execute(
         'SELECT lessons FROM courses WHERE id = ?',
@@ -59,7 +81,10 @@ const checkCourseCompletion = async (userId, courseId) => {
         : [];
 
     const totalLessons = lessonIds.length;
-    if (totalLessons === 0) return; // No lessons → nothing to complete
+    if (totalLessons === 0) {
+        await markAsIncomplete(userId, courseId);
+        return;
+    }
 
     const [trackRows] = await mysqlPool.execute(
         `SELECT COUNT(*) as count FROM lesson_tracks
@@ -68,7 +93,10 @@ const checkCourseCompletion = async (userId, courseId) => {
     );
     const completedLessons = trackRows[0].count;
 
-    if (completedLessons < totalLessons) return; // Lessons not all done yet
+    if (completedLessons < totalLessons) {
+        await markAsIncomplete(userId, courseId);
+        return; // Lessons not all done yet
+    }
 
     // ── Step 2: Verify all quizzes are passed ─────────────────────────────────
     // Fetch quiz IDs registered for this course (stored in MySQL course_quizzes)
@@ -97,19 +125,42 @@ const checkCourseCompletion = async (userId, courseId) => {
             if (!bestSubmission) {
                 // This quiz hasn't been passed → course not complete yet
                 console.log(`User ${userId} has not passed quiz ${quizId} for course ${courseId}. Completion blocked.`);
+                await markAsIncomplete(userId, courseId);
                 return;
             }
         }
     }
 
     // ── Step 3: All lessons done + all quizzes passed → mark as completed ─────
-    await mysqlPool.execute(
-        `UPDATE enrollments SET completion_status = 'completed'
-         WHERE user_id = ? AND course_id = ?`,
+    const [enrollRows] = await mysqlPool.execute(
+        `SELECT completion_status FROM enrollments WHERE user_id = ? AND course_id = ?`,
         [userId, courseId]
     );
+    const currentStatus = enrollRows[0]?.completion_status;
 
-    console.log(`✅ User ${userId} has completed course ${courseId}`);
+    if (currentStatus !== 'completed') {
+        await mysqlPool.execute(
+            `UPDATE enrollments SET completion_status = 'completed'
+             WHERE user_id = ? AND course_id = ?`,
+            [userId, courseId]
+        );
+
+        // Bust Redis cache so the instructor and student see the completed status immediately
+        try {
+            const { redisClient } = require("../congif/redisConnection");
+            if (redisClient.isReady) {
+                await redisClient.del(`course:${courseId}:enrollments`);
+                await redisClient.del(`user:${userId}:enrollments`);
+                await redisClient.del(`user:${userId}:course:${courseId}:progress`);
+                await redisClient.del(`admin:dashboard`);
+                console.log(`✅ Stale cache keys cleared for course ${courseId} & user ${userId}`);
+            }
+        } catch (cacheErr) {
+            console.error("Cache invalidation failed in checkCourseCompletion:", cacheErr);
+        }
+
+        console.log(`✅ User ${userId} has completed course ${courseId}`);
+    }
 };
 
 module.exports = {

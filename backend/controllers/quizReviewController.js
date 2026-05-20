@@ -71,6 +71,14 @@ const reviewSubmissionController =
 
             await submission.save();
 
+            // Trigger checkCourseCompletion because reviewing/grading this quiz might complete the course!
+            try {
+                const { checkCourseCompletion } = require("../models/lessonTrackModel");
+                await checkCourseCompletion(submission.studentId, submission.courseId);
+            } catch (completionErr) {
+                console.error("Error triggering course completion on quiz review:", completionErr);
+            }
+
             return res.json({
                 success: true,
                 message:

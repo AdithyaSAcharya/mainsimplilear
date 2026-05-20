@@ -42,9 +42,12 @@ const updateLessonStatusController = async (req, res) => {
 
         await updateLessonStatus(userId, courseId, lessonId, status);
         
-        if (status === 'completed') {
+        // Evaluate course completion (or demote to incomplete) on every lesson track update!
+        try {
             const { checkCourseCompletion } = require("../models/lessonTrackModel");
             await checkCourseCompletion(userId, courseId);
+        } catch (completionErr) {
+            console.error("Error triggering checkCourseCompletion:", completionErr);
         }
 
         if (redisClient.isReady) {
