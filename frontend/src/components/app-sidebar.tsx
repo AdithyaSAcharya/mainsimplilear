@@ -23,12 +23,14 @@ function AppSidebarContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [role, setRole] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string>('')
   const { setOpenMobile } = useSidebar()
 
   const view = searchParams.get("view") || "overview"
 
   useEffect(() => {
     setRole(localStorage.getItem("role")?.toUpperCase() || null)
+    setUserName(localStorage.getItem("userName") || '')
   }, [pathname])
 
   if (pathname === "/login" || pathname === "/register") return null
@@ -37,7 +39,9 @@ function AppSidebarContent() {
     localStorage.removeItem("token")
     localStorage.removeItem("role")
     localStorage.removeItem("userId")
+    localStorage.removeItem("userName")
     setRole(null)
+    setUserName('')
     router.push("/login")
     setOpenMobile(false)
   }
@@ -52,6 +56,7 @@ function AppSidebarContent() {
         </div>
         <div className="flex flex-col">
           <span className="text-lg font-bold text-black tracking-tight">LearnStack</span>
+          {userName && <span className="text-sm font-semibold text-gray-800 leading-tight">{userName}</span>}
           {role && <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{role.replace('_', ' ')}</span>}
         </div>
       </SidebarHeader>

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 function DashboardContent() {
   const [role, setRole] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [instructorCourses, setInstructorCourses] = useState<any[]>([]);
   const [adminData, setAdminData] = useState<any>(null);
@@ -38,6 +39,8 @@ function DashboardContent() {
   useEffect(() => {
     const r = (localStorage.getItem('role') || 'STUDENT').toUpperCase();
     setRole(r);
+    const uName = localStorage.getItem('userName') || '';
+    setUserName(uName);
 
     if (r === 'STUDENT') {
       fetchApi('/enrollments/user').then(res => setEnrollments(res.enrollments)).catch(console.error);
@@ -48,6 +51,11 @@ function DashboardContent() {
     }
   }, []);
 
+  const formatRole = (r: string) => {
+    if (!r) return '';
+    if (r === 'SUPER_ADMIN') return 'Super Admin';
+    return r.charAt(0) + r.slice(1).toLowerCase();
+  };
 
   const handleDeleteCourse = async (courseId: number) => {
     if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) return;
@@ -92,16 +100,18 @@ function DashboardContent() {
     <div className="container mx-auto py-10 px-6 max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
         <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
-        <p className="text-lg text-gray-500 mt-2">Welcome back. Here is what is happening today.</p>
+        <p className="text-lg text-gray-500 mt-2">
+          Welcome back{userName ? `, ${userName}` : ''} ({formatRole(role)}). Here is what is happening today.
+        </p>
       </div>
 
       {role === 'STUDENT' && (
         <div>
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="text-black h-5 w-5"/> My Enrollments</h2>
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="text-black h-5 w-5" /> My Enrollments</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {enrollments.map(en => (
-              <div 
-                key={en.id} 
+              <div
+                key={en.id}
                 className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
               >
                 <div className="p-6 flex-1 flex flex-col justify-between">
@@ -146,7 +156,7 @@ function DashboardContent() {
       {role === 'INSTRUCTOR' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2"><Layers className="text-black h-5 w-5"/> My Authored Courses</h2>
+            <h2 className="text-xl font-bold flex items-center gap-2"><Layers className="text-black h-5 w-5" /> My Authored Courses</h2>
             <Link href="/courses/create">
               <Button className="bg-black hover:bg-gray-800 text-white font-semibold px-4 py-2 rounded-md shadow-sm">
                 + Create New Course
@@ -156,8 +166,8 @@ function DashboardContent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {instructorCourses.map(c => (
-              <div 
-                key={c.id} 
+              <div
+                key={c.id}
                 className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
               >
                 {/* Thumbnail */}
@@ -217,33 +227,33 @@ function DashboardContent() {
                 </Card>
               </div>
 
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><BookOpen className="text-black h-5 w-5"/> Platform Courses Registry</h2>
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800"><BookOpen className="text-black h-5 w-5" /> Platform Courses Registry</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {adminData.courses.map((c: any) => (
-                    <div 
-                      key={c.id} 
-                      className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
-                    >
-                      <div className="p-6 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-start gap-2 mb-3">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${c.is_published === 1 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                              {c.is_published === 1 ? 'Published' : 'Draft'}
-                            </span>
-                            <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wide">ID: #{c.id}</span>
-                          </div>
-                          <h3 className="text-lg font-black text-zinc-900 group-hover:text-black transition-colors mb-2 leading-snug line-clamp-1">{c.title}</h3>
-                          <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2">{c.short_description}</p>
+                  <div
+                    key={c.id}
+                    className="group relative bg-white border border-zinc-150 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden"
+                  >
+                    <div className="p-6 flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start gap-2 mb-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${c.is_published === 1 ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {c.is_published === 1 ? 'Published' : 'Draft'}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wide">ID: #{c.id}</span>
                         </div>
-                      </div>
-                      <div className="bg-zinc-50/50 p-5 border-t border-zinc-100">
-                        <Link href={`/courses/${c.id}`}>
-                          <Button variant="outline" className="w-full border-zinc-300 font-bold bg-white hover:bg-zinc-50 rounded-xl py-5 transition-all">
-                            Inspect Contents
-                          </Button>
-                        </Link>
+                        <h3 className="text-lg font-black text-zinc-900 group-hover:text-black transition-colors mb-2 leading-snug line-clamp-1">{c.title}</h3>
+                        <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2">{c.short_description}</p>
                       </div>
                     </div>
+                    <div className="bg-zinc-50/50 p-5 border-t border-zinc-100">
+                      <Link href={`/courses/${c.id}`}>
+                        <Button variant="outline" className="w-full border-zinc-300 font-bold bg-white hover:bg-zinc-50 rounded-xl py-5 transition-all">
+                          Inspect Contents
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -269,12 +279,12 @@ function DashboardContent() {
                       )}
                       {adminData.enrollments.filter((e: any) => e.user_id === selectedUser.id).map((e: any) => (
                         <Card key={e.course_id} className="shadow-sm border-0">
-                           <CardContent className="p-4 flex justify-between items-center">
-                             <span className="font-semibold text-gray-800">{e.course_title}</span>
-                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${e.completion_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                               {e.completion_status}
-                             </span>
-                           </CardContent>
+                          <CardContent className="p-4 flex justify-between items-center">
+                            <span className="font-semibold text-gray-800">{e.course_title}</span>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${e.completion_status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {e.completion_status}
+                            </span>
+                          </CardContent>
                         </Card>
                       ))}
                     </div>
@@ -350,10 +360,10 @@ function DashboardContent() {
                       )}
                       {adminData.instructorCoursesList.filter((c: any) => c.instructor_id === selectedInstructor.id).map((c: any) => (
                         <Card key={c.course_id} className="shadow-sm border-0 hover:shadow-md transition">
-                           <CardContent className="p-5">
-                             <span className="font-bold text-lg text-gray-900 block mb-2">{c.title}</span>
-                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Course ID: #{c.course_id}</span>
-                           </CardContent>
+                          <CardContent className="p-5">
+                            <span className="font-bold text-lg text-gray-900 block mb-2">{c.title}</span>
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Course ID: #{c.course_id}</span>
+                          </CardContent>
                         </Card>
                       ))}
                     </div>
@@ -425,15 +435,15 @@ function DashboardContent() {
                   <form onSubmit={handleAddInstructor} className="space-y-6">
                     <div>
                       <Label className="text-gray-700 font-bold mb-2 block text-sm uppercase tracking-wide">Full Legal Name</Label>
-                      <Input className="bg-white py-6 text-lg rounded-xl shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900" placeholder="e.g. John Doe" value={newInstructor.fullName} onChange={e => setNewInstructor({...newInstructor, fullName: e.target.value})} required />
+                      <Input className="bg-white py-6 text-lg rounded-xl shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900" placeholder="e.g. John Doe" value={newInstructor.fullName} onChange={e => setNewInstructor({ ...newInstructor, fullName: e.target.value })} required />
                     </div>
                     <div>
                       <Label className="text-gray-700 font-bold mb-2 block text-sm uppercase tracking-wide">Professional Email</Label>
-                      <Input className="bg-white py-6 text-lg rounded-xl shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900" type="email" placeholder="instructor@learnstack.com" value={newInstructor.email} onChange={e => setNewInstructor({...newInstructor, email: e.target.value})} required />
+                      <Input className="bg-white py-6 text-lg rounded-xl shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900" type="email" placeholder="instructor@learnstack.com" value={newInstructor.email} onChange={e => setNewInstructor({ ...newInstructor, email: e.target.value })} required />
                     </div>
                     <div>
                       <Label className="text-gray-700 font-bold mb-2 block text-sm uppercase tracking-wide">Temporary Password</Label>
-                      <Input className="bg-white py-6 text-lg rounded-xl shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900" type="password" placeholder="••••••••" value={newInstructor.password} onChange={e => setNewInstructor({...newInstructor, password: e.target.value})} required />
+                      <Input className="bg-white py-6 text-lg rounded-xl shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900" type="password" placeholder="••••••••" value={newInstructor.password} onChange={e => setNewInstructor({ ...newInstructor, password: e.target.value })} required />
                     </div>
                     <Button type="submit" className="w-full text-lg font-bold py-6 rounded-xl bg-gray-900 hover:bg-gray-800 shadow-xl hover:shadow-2xl transition-all mt-4">
                       Create Instructor Account

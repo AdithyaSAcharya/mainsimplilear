@@ -32,6 +32,8 @@ export default function LoginModal() {
       });
       localStorage.setItem('token', res.token);
       localStorage.setItem('role', res.user.role);
+      localStorage.setItem('userId', res.user.id.toString());
+      localStorage.setItem('userName', res.user.full_name);
       window.location.href = '/dashboard';
     } catch (err: any) {
       toast.error(err.message);
