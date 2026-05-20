@@ -65,3 +65,11 @@ This document outlines the three primary roles within the LearnStack platform an
 
 **Restrictions:**
 * *None.* The Super Admin has full overarching control of both content moderation and user management.
+
+
+
+user:${userId}:enrollments	Stores the course enrollment list for a specific student.	24 Hours (86400s)
+course:${courseId}:enrollments	Stores the student list enrolled in a specific course (viewed by instructors).	24 Hours (86400s)
+user:${userId}:course:${courseId}:progress	Tracks lesson completion counts and percentages for a student.	24 Hours (86400s)
+courses:page:${page}:limit:${limit}	Caches paginated lists of public courses on the home page.	1 Hour (3600s)
+admin:dashboard	Caches high-level aggregated counts for the Super Admin.	24 Hours (86400s)
