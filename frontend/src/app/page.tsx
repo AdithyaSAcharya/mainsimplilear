@@ -13,6 +13,7 @@ export default function Home() {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<number[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState<string>('');
+  const [userId, setUserId] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -20,6 +21,11 @@ export default function Home() {
     
     const currentRole = (localStorage.getItem('role') || '').toUpperCase();
     setRole(currentRole);
+
+    const storedUserId = localStorage.getItem('userId');
+    if (storedUserId) {
+      setUserId(Number(storedUserId));
+    }
 
     if (localStorage.getItem('token')) {
       setIsLoggedIn(true);
@@ -203,7 +209,7 @@ export default function Home() {
                 
                 {/* Actions Sidebar */}
                 <div className="bg-zinc-50/50 p-6 md:w-60 border-t md:border-t-0 md:border-l border-zinc-100 flex flex-col justify-center items-center gap-3 shrink-0 md:h-full">
-                  {role === 'INSTRUCTOR' || role === 'SUPER_ADMIN' ? (
+                  {role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(c.instructor_id) === userId) ? (
                     <Button 
                       className="w-full py-6 rounded-xl text-sm font-bold bg-zinc-900 hover:bg-zinc-800 text-white shadow-md transition-all hover:scale-[1.02] active:scale-100" 
                       onClick={() => router.push(`/courses/${c.id}`)}

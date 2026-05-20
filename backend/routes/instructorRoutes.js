@@ -71,6 +71,13 @@ router.post(
   createInstructor
 );
 
+router.post(
+  "/",
+  authMiddleware,
+  adminMiddleware,
+  createInstructor
+);
+
 /**
  * @swagger
  * /api/instructors/courses:

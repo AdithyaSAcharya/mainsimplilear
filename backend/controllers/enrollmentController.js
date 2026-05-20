@@ -28,6 +28,7 @@ const enrollUserInCourseController = async (req, res) => {
         if (redisClient.isReady) {
             await redisClient.del(`user:${userId}:enrollments`);
             await redisClient.del(`course:${courseId}:enrollments`);
+            await redisClient.del('admin:dashboard'); // Bust admin cache so new enrollment is visible
         }
 
         return res.status(201).json({ success: true, message: "User enrolled in course successfully.", enrollmentId: result.insertId });
@@ -278,6 +279,7 @@ const isTheCourseComplete = async (req, res) => {
             if (redisClient.isReady) {
                 await redisClient.del(`user:${studentId}:enrollments`);
                 await redisClient.del(`course:${courseId}:enrollments`);
+                await redisClient.del('admin:dashboard'); // Bust admin cache on completion
             }
         }
 

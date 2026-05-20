@@ -19,6 +19,7 @@ export default function CourseDetails() {
   const [role, setRole] = useState<string>('');
 
   const [lessonProgress, setLessonProgress] = useState<any[]>([]);
+  const [userId, setUserId] = useState<number | null>(null);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
 
@@ -59,19 +60,23 @@ export default function CourseDetails() {
   useEffect(() => {
     const currentRole = (localStorage.getItem('role') || 'STUDENT').toUpperCase();
     setRole(currentRole);
-    loadCourse();
+    const storedUserId = localStorage.getItem('userId');
+    const uId = storedUserId ? Number(storedUserId) : null;
+    setUserId(uId);
+
+    loadCourse(currentRole, uId);
     if (currentRole === 'STUDENT') {
       loadProgress();
     }
-    if (currentRole === 'INSTRUCTOR' || currentRole === 'SUPER_ADMIN') {
-      fetchApi(`/enrollments/course/${id}`).then(res => setEnrollments(res.enrollments || [])).catch(console.error);
-    }
   }, [id]);
 
-  const loadCourse = () => {
+  const loadCourse = (currentRole: string, uId: number | null) => {
     fetchApi(`/courses/${id}`).then(res => {
       setCourse(res.course);
       setEditCourseData({ title: res.course.title, short_description: res.course.short_description });
+      if (currentRole === 'SUPER_ADMIN' || (currentRole === 'INSTRUCTOR' && Number(res.course.instructor_id) === uId)) {
+        fetchApi(`/enrollments/course/${id}`).then(enrollRes => setEnrollments(enrollRes.enrollments || [])).catch(console.error);
+      }
     }).catch(console.error);
   };
 
@@ -163,7 +168,7 @@ export default function CourseDetails() {
   if (!course) return <div className="p-8 flex justify-center items-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div></div>;
 
   if (selectedLesson) {
-    const isEnrolled = !!selectedLesson.content || role === 'INSTRUCTOR' || role === 'SUPER_ADMIN';
+    const isEnrolled = !!selectedLesson.content || role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(course?.instructor_id) === userId);
     const progressStatus = lessonProgress.find(p => p.lesson_id === selectedLesson._id)?.status || 'not_started';
 
     return (
@@ -277,7 +282,7 @@ export default function CourseDetails() {
           <div>
             <div className="flex items-center gap-4 mb-2">
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{course.title}</h1>
-              {(role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') && (
+              {(role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(course.instructor_id) === userId)) && (
                 <Button variant="outline" size="sm" onClick={() => setIsEditingCourse(true)} className="flex items-center gap-1">
                   <Edit size={14} /> Edit
                 </Button>
@@ -343,7 +348,7 @@ export default function CourseDetails() {
         <div className="w-full">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800"><PlayCircle size={20} className="text-black" /> Course Content</h2>
-            {role === 'INSTRUCTOR' && (
+            {(role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(course.instructor_id) === userId)) && (
               <div className="flex gap-2">
                 <Link href={`/courses/${id}/add-quiz`}>
                   <Button variant="outline" className="font-semibold rounded-md px-4 py-2 shadow-sm">
@@ -402,7 +407,7 @@ export default function CourseDetails() {
                         )}
                       </div>
                     </div>
-                    {(role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') ? (
+                    {(role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(course.instructor_id) === userId)) ? (
                       <div className="flex items-center gap-1">
                         <Link href={`/courses/${id}/edit-lesson/${l._id}`} onClick={(e) => e.stopPropagation()}>
                           <Button variant="ghost" size="sm" className="text-gray-500 hover:text-black">
@@ -435,7 +440,7 @@ export default function CourseDetails() {
         </div>
       </div>
 
-      {(role === 'INSTRUCTOR' || role === 'SUPER_ADMIN') && (
+      {(role === 'SUPER_ADMIN' || (role === 'INSTRUCTOR' && Number(course.instructor_id) === userId)) && (
         <div className="w-full mt-12">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800"><Users size={20} className="text-black" /> Enrolled Students ({enrollments.length})</h2>
